@@ -36,22 +36,23 @@ Route::middleware(['auth'])->group(function () {
 
 // Role-based dashboards
 Route::middleware(['auth', 'role:superadmin'])->group(function () {
-    Volt::route('admin', 'dashboard-superadmin')->name('admin.dashboard');
-    Volt::route('admin/drivers', 'admin-drivers')->name('admin.drivers');
+    Volt::route('admin', 'dashboard-superadmin')->middleware('permission:can.view.superadmin.dashboard')->name('admin.dashboard');
+    Volt::route('admin/drivers', 'admin-drivers')->middleware('permission:can.manage.drivers')->name('admin.drivers');
+    Volt::route('admin/roles', 'admin-roles')->middleware('permission:can.manage.roles')->name('admin.roles');
 });
 
 Route::middleware(['auth', 'role:driver'])->group(function () {
     Volt::route('driver', 'dashboard-driver')->name('driver.dashboard');
-    Volt::route('driver/rides', 'driver-rides')->name('driver.rides');
+    Volt::route('driver/rides', 'driver-rides')->middleware('permission:can.view.assigned.rides')->name('driver.rides');
 });
 
 Route::middleware(['auth', 'role:user'])->group(function () {
     Volt::route('user', 'dashboard-user')->name('user.dashboard');
-    Volt::route('user/rides/book', 'user-book-ride')->name('user.rides.book');
+    Volt::route('user/rides/book', 'user-book-ride')->middleware('permission:can.book.ride')->name('user.rides.book');
 });
 
 // Payment routes
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'permission:can.pay.online'])->group(function () {
     Route::post('paystack/initialize', [\App\Http\Controllers\PaymentController::class, 'initialize'])->name('payment.initialize');
     Route::get('paystack/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');
 });

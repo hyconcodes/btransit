@@ -47,7 +47,10 @@ new #[Layout('components.layouts.auth')] class extends Component {
             Driver::firstOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'status' => 'pending_approval',
+                    'vehicle_name' => 'TBD',
+                    'plate_number' => 'TBD',
+                    'charge_rate' => 0,
+                    'status' => 'pending',
                     'is_available' => true,
                 ],
             );

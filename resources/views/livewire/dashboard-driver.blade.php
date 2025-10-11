@@ -19,22 +19,22 @@ new class extends Component {
 }; ?>
 
 <div class="p-6 space-y-6">
-    <h2 class="text-xl font-semibold">Driver Dashboard</h2>
-    <div class="grid grid-cols-3 gap-4">
-        <div class="border rounded p-4">
-            <div class="text-sm">Assigned</div>
+    <h2 class="tw-heading">Driver Dashboard</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card">
+            <div class="tw-body">Assigned</div>
             <div class="text-2xl font-bold">{{ $assigned }}</div>
         </div>
-        <div class="border rounded p-4">
-            <div class="text-sm">In Progress</div>
+        <div class="card">
+            <div class="tw-body">In Progress</div>
             <div class="text-2xl font-bold">{{ $inProgress }}</div>
         </div>
-        <div class="border rounded p-4">
-            <div class="text-sm">Completed</div>
+        <div class="card">
+            <div class="tw-body">Completed</div>
             <div class="text-2xl font-bold">{{ $completed }}</div>
         </div>
     </div>
     <div>
-        <flux:link :href="route('driver.rides')" variant="primary">Manage Rides</flux:link>
+        <flux:link :href="route('driver.rides')" variant="primary" class="btn-primary">Manage Rides</flux:link>
     </div>
 </div>

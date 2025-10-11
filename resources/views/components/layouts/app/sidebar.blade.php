@@ -35,6 +35,10 @@
                         :current="request()->routeIs('admin.drivers')" wire:navigate>
                         {{ __('Driver Management') }}
                     </flux:navlist.item>
+                    <flux:navlist.item icon="key" :href="route('admin.roles')"
+                        :current="request()->routeIs('admin.roles')" wire:navigate>
+                        {{ __('Roles & Permissions') }}
+                    </flux:navlist.item>
                 @endrole
                 @role('driver')
                     <flux:navlist.item icon="truck" :href="route('driver.rides')"
@@ -163,6 +167,8 @@
     </flux:header>
 
     {{ $slot }}
+
+    @include('partials.toast')
 
     @fluxScripts
 </body>

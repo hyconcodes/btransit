@@ -11,24 +11,77 @@ new class extends Component {
     public ?int $driver_id = null;
     public string $pickup = '';
     public string $destination = '';
+    // Payment method is deferred until driver accepts; default is cash
     public string $payment_method = 'cash';
+    public int $pendingCount = 0;
+    public ?string $limitError = null;
+
+    // My rides management state
+    public array $myRides = [];
+    public bool $showEditModal = false;
+    public bool $showChangeDriverModal = false;
+    public ?int $editRideId = null;
+    public string $editPickup = '';
+    public string $editDestination = '';
+    public ?int $new_driver_id = null;
 
     public function mount(): void
     {
-        $this->drivers = Driver::where('status', 'approved')->orderBy('charge_rate')->get()->toArray();
+        $this->drivers = Driver::where('status', 'approved')
+            ->where('is_available', true)
+            ->orderBy('charge_rate')
+            ->get()
+            ->toArray();
+
+        $this->pendingCount = Ride::where('user_id', Auth::id())
+            ->where('status', 'pending')
+            ->count();
+
+        $this->refreshUserRides();
     }
 
     public function bookRide(): void
     {
+        // Prevent booking if user already has two pending rides
+        $pending = Ride::where('user_id', Auth::id())
+            ->where('status', 'pending')
+            ->count();
+        if ($pending >= 2) {
+            $this->limitError = 'You already have 2 pending rides. Please complete or cancel one before booking another.';
+            return;
+        }
+
         $this->validate([
-            'driver_id' => ['required', 'integer'],
+            'driver_id' => ['nullable', 'integer'],
             'pickup' => ['required', 'string', 'min:3'],
             'destination' => ['required', 'string', 'min:3'],
-            'payment_method' => ['required', 'in:paystack,cash'],
         ]);
 
-        $driver = Driver::findOrFail($this->driver_id);
-        $fare = (float) $driver->charge_rate;
+        // Auto-assign if no driver was explicitly selected
+        if (! $this->driver_id) {
+            $driver = Driver::where('status', 'approved')
+                ->where('is_available', true)
+                ->orderBy('charge_rate')
+                ->first();
+
+            if (! $driver) {
+                $this->addError('driver_id', 'No available drivers at the moment.');
+                return;
+            }
+        } else {
+            $driver = Driver::where('id', $this->driver_id)
+                ->where('status', 'approved')
+                ->where('is_available', true)
+                ->first();
+
+            if (! $driver) {
+                $this->addError('driver_id', 'Selected driver is not available or not approved.');
+                return;
+            }
+        }
+
+        // Fare will be set by the driver upon acceptance
+        $fare = 0.0;
 
         $ride = Ride::create([
             'user_id' => Auth::id(),
@@ -36,35 +89,124 @@ new class extends Component {
             'pickup' => $this->pickup,
             'destination' => $this->destination,
             'fare' => $fare,
-            'payment_method' => $this->payment_method,
-            'payment_status' => $this->payment_method === 'cash' ? 'pending' : 'pending',
+            'payment_method' => 'cash',
+            'payment_status' => 'pending',
             'status' => 'pending',
         ]);
 
-        if ($this->payment_method === 'cash') {
-            Payment::create([
-                'ride_id' => $ride->id,
-                'amount' => $fare,
-                'payment_method' => 'cash',
-                'status' => 'pending',
-            ]);
+        // Update counter for UI in case redirect is delayed
+        $this->pendingCount = $pending + 1;
 
-            $this->dispatch('ride-booked', id: $ride->id);
-            $this->redirect(route('user.dashboard'), navigate: true);
-        } else {
-            $this->redirect(route('payment.initialize'), navigate: true, parameters: ['ride_id' => $ride->id]);
+        // Inform UI and redirect; payment happens after driver acceptance
+        $this->dispatch('ride-booked', id: $ride->id);
+        $this->redirect(route('user.dashboard'), navigate: true);
+    }
+
+    public function refreshUserRides(): void
+    {
+        $this->myRides = Ride::where('user_id', Auth::id())
+            ->orderByDesc('created_at')
+            ->get()
+            ->toArray();
+    }
+
+    public function openEdit(int $id): void
+    {
+        $ride = Ride::findOrFail($id);
+        if ($ride->user_id !== Auth::id()) {
+            return;
         }
+        $this->editRideId = $id;
+        $this->editPickup = (string) $ride->pickup;
+        $this->editDestination = (string) $ride->destination;
+        $this->showEditModal = true;
+    }
+
+    public function updateRideDetails(): void
+    {
+        if (! $this->editRideId) {
+            return;
+        }
+        $this->validate([
+            'editPickup' => ['required', 'string', 'min:3'],
+            'editDestination' => ['required', 'string', 'min:3'],
+        ]);
+
+        $ride = Ride::findOrFail($this->editRideId);
+        if ($ride->user_id !== Auth::id()) {
+            return;
+        }
+        if ($ride->status !== 'pending') {
+            return;
+        }
+        $ride->update(['pickup' => $this->editPickup, 'destination' => $this->editDestination]);
+        $this->showEditModal = false;
+        $this->editRideId = null;
+        $this->refreshUserRides();
+    }
+
+    public function openChangeDriver(int $id): void
+    {
+        $ride = Ride::findOrFail($id);
+        if ($ride->user_id !== Auth::id()) {
+            return;
+        }
+        $this->editRideId = $id;
+        $this->new_driver_id = $ride->driver_id;
+        $this->showChangeDriverModal = true;
+    }
+
+    public function changeDriver(): void
+    {
+        if (! $this->editRideId || ! $this->new_driver_id) {
+            return;
+        }
+        $ride = Ride::findOrFail($this->editRideId);
+        if ($ride->user_id !== Auth::id()) {
+            return;
+        }
+        if ($ride->status !== 'pending') {
+            return;
+        }
+
+        $driver = Driver::where('id', $this->new_driver_id)
+            ->where('status', 'approved')
+            ->where('is_available', true)
+            ->first();
+        if (! $driver) {
+            return;
+        }
+        $ride->update(['driver_id' => $driver->id]);
+        $this->showChangeDriverModal = false;
+        $this->editRideId = null;
+        $this->refreshUserRides();
+    }
+
+    public function cancelRide(int $id): void
+    {
+        $ride = Ride::findOrFail($id);
+        if ($ride->user_id !== Auth::id()) {
+            return;
+        }
+        if (in_array($ride->status, ['pending', 'accepted'], true) && $ride->payment_status !== 'paid') {
+            $ride->update(['status' => 'cancelled']);
+        }
+        $this->refreshUserRides();
     }
 }; ?>
 
 <div class="p-6 space-y-6">
-    <h2 class="text-xl font-semibold">Book a Ride</h2>
+    <h2 class="tw-heading">Book a Ride</h2>
 
-    <form wire:submit="bookRide" class="grid gap-4 max-w-xl">
+    <form wire:submit="bookRide" class="card grid gap-4 max-w-xl">
+        <div class="{{ ($limitError || $pendingCount >= 2) ? 'text-sm text-red-600' : 'text-xs text-gray-600' }}">
+            {{ $limitError ?? ($pendingCount >= 2 ? 'You already have 2 pending rides. Complete or cancel before booking another.' : 'Pending rides: ' . $pendingCount . ' / 2') }}
+        </div>
+
         <label class="grid gap-1">
-            <span class="text-sm">Driver</span>
-            <select wire:model="driver_id" class="border rounded p-2">
-                <option value="">Select driver</option>
+            <span class="tw-body">Driver (optional)</span>
+            <select wire:model="driver_id" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]">
+                <option value="">Auto-assign best available</option>
                 @foreach($drivers as $d)
                     <option value="{{ $d['id'] }}">{{ $d['vehicle_name'] }} (₦{{ number_format($d['charge_rate'], 2) }})</option>
                 @endforeach
@@ -74,14 +216,98 @@ new class extends Component {
         <flux:input wire:model="pickup" label="Pickup" />
         <flux:input wire:model="destination" label="Destination" />
 
-        <label class="grid gap-1">
-            <span class="text-sm">Payment Method</span>
-            <select wire:model="payment_method" class="border rounded p-2">
-                <option value="cash">Cash</option>
-                <option value="paystack">Paystack</option>
-            </select>
-        </label>
+        <!-- Payment selection is deferred until driver accepts and sets fare -->
 
-        <flux:button type="submit" variant="primary">Book Ride</flux:button>
+        <flux:button type="submit" variant="primary" :disabled="$pendingCount >= 2" class="btn-primary">Book Ride</flux:button>
     </form>
+
+    <div class="space-y-4">
+        <div class="tw-heading">My Rides</div>
+        <div class="grid gap-3">
+            @forelse($myRides as $r)
+                <div class="card grid gap-2">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="font-medium">{{ $r['pickup'] }} → {{ $r['destination'] }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">Driver: #{{ $r['driver_id'] }} · Created: {{ \Carbon\Carbon::parse($r['created_at'])->diffForHumans() }}</div>
+                        </div>
+                        <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium
+                            {{ $r['status'] === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' : '' }}
+                            {{ $r['status'] === 'accepted' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : '' }}
+                            {{ $r['status'] === 'in_progress' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' : '' }}
+                            {{ $r['status'] === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : '' }}
+                            {{ $r['status'] === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : '' }}
+                        ">
+                            {{ ucfirst($r['status']) }}
+                        </span>
+                    </div>
+
+                    <div class="tw-body">Fare: ₦{{ number_format($r['fare'], 2) }} · Payment: {{ $r['payment_status'] }} ({{ $r['payment_method'] }})</div>
+
+                    <div class="flex flex-wrap gap-2">
+                        @if(in_array($r['status'], ['pending', 'accepted'], true) && $r['payment_status'] !== 'paid')
+                            <flux:button wire:click="cancelRide({{ $r['id'] }})" variant="outline" class="text-red-600">Cancel</flux:button>
+                        @endif
+
+                        @if($r['status'] === 'pending')
+                            <flux:button wire:click="openEdit({{ $r['id'] }})" variant="outline">Edit Details</flux:button>
+                            <flux:button wire:click="openChangeDriver({{ $r['id'] }})" variant="outline">Change Driver</flux:button>
+                        @endif
+
+                        @if($r['status'] === 'accepted' && $r['payment_status'] === 'pending' && (float) $r['fare'] > 0)
+                            <form method="POST" action="{{ route('payment.initialize') }}" class="inline">
+                                @csrf
+                                <input type="hidden" name="ride_id" value="{{ $r['id'] }}" />
+                                <flux:button type="submit" variant="primary" class="btn-primary">Pay with Paystack</flux:button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <div class="tw-body">No rides yet. Book your first ride above.</div>
+            @endforelse
+        </div>
+    </div>
+
+    <flux:modal
+        name="edit-ride-modal"
+        variant="dialog"
+        class="max-w-lg"
+        wire:model="showEditModal"
+        @close="$set('showEditModal', false)"
+    >
+        <div class="grid gap-4">
+            <div class="tw-heading">Edit Ride Details</div>
+            <flux:input wire:model="editPickup" label="Pickup" />
+            <flux:input wire:model="editDestination" label="Destination" />
+            <div class="flex items-center gap-2">
+                <flux:button variant="outline" wire:click="$set('showEditModal', false)">Cancel</flux:button>
+                <flux:button variant="primary" wire:click="updateRideDetails">Save Changes</flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    <flux:modal
+        name="change-driver-modal"
+        variant="dialog"
+        class="max-w-lg"
+        wire:model="showChangeDriverModal"
+        @close="$set('showChangeDriverModal', false)"
+    >
+        <div class="grid gap-4">
+            <div class="tw-heading">Change Driver</div>
+            <label class="grid gap-1">
+                <span class="tw-body">Select Driver</span>
+                <select wire:model="new_driver_id" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]">
+                    @foreach($drivers as $d)
+                        <option value="{{ $d['id'] }}">{{ $d['vehicle_name'] }} (₦{{ number_format($d['charge_rate'], 2) }})</option>
+                    @endforeach
+                </select>
+            </label>
+            <div class="flex items-center gap-2">
+                <flux:button variant="outline" wire:click="$set('showChangeDriverModal', false)">Cancel</flux:button>
+                <flux:button variant="primary" wire:click="changeDriver">Update Driver</flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>
