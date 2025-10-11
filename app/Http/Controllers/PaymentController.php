@@ -77,7 +77,7 @@ class PaymentController extends Controller
     {
         $reference = $request->query('reference');
         if (! $reference) {
-            return redirect()->route('dashboard')->with('error', 'No reference provided.');
+            return redirect()->route('user.dashboard')->with('error', 'No reference provided.');
         }
 
         $payment = Payment::where('reference', $reference)->first();
@@ -109,7 +109,7 @@ class PaymentController extends Controller
                     $payment->ride()->update(['payment_status' => 'paid']);
                 }
 
-                return redirect()->route('dashboard')->with('success', 'Payment successful!');
+                return redirect()->route('user.dashboard')->with('success', 'Payment successful!');
             }
 
             // Log failed payment
@@ -118,10 +118,10 @@ class PaymentController extends Controller
                     'status' => 'failed',
                 ]);
             }
-            return redirect()->route('dashboard')->with('error', 'Payment failed or could not be verified.');
+            return redirect()->route('user.dashboard')->with('error', 'Payment failed or could not be verified.');
         } catch (\Throwable $e) {
             Log::error('Payment verify exception', ['error' => $e->getMessage()]);
-            return redirect()->route('dashboard')->with('error', 'Payment verification error.');
+            return redirect()->route('user.dashboard')->with('error', 'Payment verification error.');
         }
     }
 }
