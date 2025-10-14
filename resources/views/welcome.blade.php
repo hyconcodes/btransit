@@ -5,12 +5,11 @@
         @include('partials.head')
         <style>
             :root {
-                --primary: #007F5F;
-                --accent: #F4C430;
+                --primary: #16A34A; /* Green */
+                --accent: #F59E0B;  /* Amber */
                 --text-dark: #1F2937;
                 --bg-light: #F9FAFB;
                 --white: #FFFFFF;
-                --success: #16A34A;
             }
         </style>
     </head>
@@ -61,17 +60,17 @@
                     <div class="grid items-center gap-8 lg:grid-cols-2">
                         <div class="space-y-6">
                             <h1 class="text-3xl font-semibold sm:text-4xl lg:text-5xl">
-                                BTransit — BOUESTI Taxi Booking System
+                                Your Premium Ride, Just a Click Away
                             </h1>
                             <p class="tw-body max-w-prose">
-                                Seamless campus rides: book, pay securely, and track driver availability. Clean, fast, and built for BOUESTI.
+                                Experience the comfort and convenience of BTransit. Safe, reliable, and always on time.
                             </p>
                             <div class="flex flex-wrap gap-3">
                                 <a href="{{ route('register') }}" class="btn-primary inline-flex items-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-white shadow-md transition hover:scale-[1.01]">
                                     Get Started
                                 </a>
-                                <a href="{{ route('login') }}" class="inline-flex items-center rounded-lg border border-[var(--primary)] px-5 py-2.5 text-[var(--primary)] transition hover:bg-[var(--primary)] hover:text-white">
-                                    Login
+                                <a href="#features" class="inline-flex items-center rounded-lg border border-[var(--primary)] px-5 py-2.5 text-[var(--primary)] transition hover:bg-[var(--primary)] hover:text-white">
+                                    Learn More
                                 </a>
                             </div>
                             <div class="flex items-center gap-2 text-sm text-gray-600">
@@ -80,12 +79,9 @@
                             </div>
                         </div>
                         <div class="relative">
-                            <div class="aspect-video w-full overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-gray-200">
-                                <div class="h-full w-full grid place-items-center bg-gradient-to-br from-[var(--primary)]/10 via-[var(--accent)]/10 to-white">
-                                    <div class="text-7xl animate-[pulse_3s_ease-in-out_infinite]">🚖</div>
-                                </div>
+                            <div class="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-md ring-1 ring-gray-200">
+                                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3gziRkXi4zVI9tlJVx9-RhItMPuqvTlVrZ0Vdp_qbYCDmXvLrTpMdPDiPe17C2CCjg5AvqW06WvyJIXDHXg4cZoXjFXlyS9uNKaLT-pZuU7Vg-2HY4-GOcWAfWfuKMFHiPz5IlB5cAo6r7bw5FWwliuUed5mo8jmnTDlpNJzwAMAKRpYgstc4yGkJqzFxGd1g1v760PSMwlhispRV6ny92r84rh7-1PPweUouCx6hk0vkokCW9v66b1rVdf-G74jGdliT_mGv0Ds" alt="City night ride" class="h-full w-full object-cover"/>
                             </div>
-                            <div class="absolute -bottom-6 -left-6 hidden lg:block h-24 w-24 rounded-full bg-[var(--accent)]/20 blur"></div>
                         </div>
                     </div>
                 </div>
@@ -94,14 +90,14 @@
             <!-- Features Section -->
             <section id="features" class="mt-16 sm:mt-24">
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <h2 class="tw-heading">Features</h2>
-                    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    <h2 class="tw-heading">Why Choose BTransit?</h2>
+                    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         <div class="card transition hover:shadow-lg">
                             <div class="flex items-center gap-3">
                                 <div class="h-10 w-10 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center">⚡</div>
                                 <div>
-                                    <div class="font-medium">Quick Booking</div>
-                                    <div class="tw-body">Book rides in seconds with a clean flow.</div>
+                                    <div class="font-medium">Easy Booking</div>
+                                    <div class="tw-body">Book rides in seconds, anytime.</div>
                                 </div>
                             </div>
                         </div>
@@ -109,8 +105,8 @@
                             <div class="flex items-center gap-3">
                                 <div class="h-10 w-10 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center">💳</div>
                                 <div>
-                                    <div class="font-medium">Secure Payments</div>
-                                    <div class="tw-body">Paystack integration for reliable payments.</div>
+                                    <div class="font-medium">Reliable Drivers</div>
+                                    <div class="tw-body">Verified drivers ensure safety and comfort.</div>
                                 </div>
                             </div>
                         </div>
@@ -118,17 +114,8 @@
                             <div class="flex items-center gap-3">
                                 <div class="h-10 w-10 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center">🚘</div>
                                 <div>
-                                    <div class="font-medium">Live Availability</div>
-                                    <div class="tw-body">Drivers toggle presence with animated switches.</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card transition hover:shadow-lg">
-                            <div class="flex items-center gap-3">
-                                <div class="h-10 w-10 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center">💵</div>
-                                <div>
-                                    <div class="font-medium">Cash Confirmation</div>
-                                    <div class="tw-body">Modal confirmation before completing cash rides.</div>
+                                    <div class="font-medium">Transparent Pricing</div>
+                                    <div class="tw-body">Know your fare before you ride.</div>
                                 </div>
                             </div>
                         </div>
@@ -136,18 +123,83 @@
                 </div>
             </section>
 
-            <!-- About / CTA Section -->
+            <!-- How It Works Section -->
+            <section id="how-it-works" class="mt-16 sm:mt-24">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="tw-heading">How It Works</h2>
+                    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="card transition hover:shadow-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center">📝</div>
+                                <div>
+                                    <div class="font-medium">Step 1: Request a Ride</div>
+                                    <div class="tw-body">Choose your destination and pickup preferences.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card transition hover:shadow-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center">🤝</div>
+                                <div>
+                                    <div class="font-medium">Step 2: Get Matched</div>
+                                    <div class="tw-body">We connect you with a reliable nearby driver.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card transition hover:shadow-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center">⭐</div>
+                                <div>
+                                    <div class="font-medium">Step 3: Enjoy Your Trip</div>
+                                    <div class="tw-body">Track progress and arrive safely, on time.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTA: Riders -->
             <section id="about" class="mt-16 sm:mt-24">
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="card grid gap-3 md:grid-cols-3 md:items-center">
-                        <div class="md:col-span-2">
-                            <h3 class="text-xl font-semibold">Built for BOUESTI</h3>
-                            <p class="tw-body mt-2">BTransit is tailored to meet campus mobility needs with speed, clarity, and safety. Enjoy minimal UI, fast actions, and transparent fares.</p>
+                    <div class="rounded-2xl bg-[var(--primary)] px-6 py-10 text-white shadow-md sm:px-8 lg:px-10">
+                        <div class="grid items-center gap-6 md:grid-cols-3">
+                            <div class="md:col-span-2">
+                                <h3 class="text-2xl font-semibold">Ready to Ride with BTransit?</h3>
+                                <p class="mt-2 text-white/90">Join thousands of satisfied customers and enjoy a hassle-free journey.</p>
+                            </div>
+                            <div class="flex md:justify-end">
+                                <a href="{{ route('register') }}" class="inline-flex items-center rounded-lg bg-white px-5 py-2.5 font-medium text-[var(--primary)] shadow-md transition hover:scale-[1.01]">Join Now</a>
+                            </div>
                         </div>
-                        <div class="flex md:justify-end">
-                            <a href="{{ route('user.rides.book') }}" class="btn-primary inline-flex items-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-white shadow-md transition hover:scale-[1.01]">
-                                Book a Ride
-                            </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTA: Drivers -->
+            <section id="cta-drivers" class="mt-8 sm:mt-12">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="rounded-2xl bg-[var(--primary)] px-6 py-10 text-white shadow-md sm:px-8 lg:px-10">
+                        <div class="grid gap-6">
+                            <h3 class="text-2xl font-semibold">Become a BTransit Driver</h3>
+                            <p class="text-white/90">Start earning on your schedule. Drive with BTransit and enjoy flexibility and benefits.</p>
+                            <div class="grid gap-4 sm:grid-cols-3">
+                                <div class="rounded-lg bg-white/10 p-4">
+                                    <div class="font-medium">Weekly Payouts</div>
+                                    <div class="text-white/80 text-sm">Get paid fast and regularly.</div>
+                                </div>
+                                <div class="rounded-lg bg-white/10 p-4">
+                                    <div class="font-medium">Flexible Hours</div>
+                                    <div class="text-white/80 text-sm">Drive when it fits your life.</div>
+                                </div>
+                                <div class="rounded-lg bg-white/10 p-4">
+                                    <div class="font-medium">24/7 Support</div>
+                                    <div class="text-white/80 text-sm">We’re here whenever you need us.</div>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="{{ route('register') }}" class="inline-flex items-center rounded-lg bg-white px-5 py-2.5 font-medium text-[var(--primary)] shadow-md transition hover:scale-[1.01]">Join as a Driver</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -173,6 +225,10 @@
                         <a href="#features" class="hover:text-[var(--primary)]">Features</a>
                         <a href="#about" class="hover:text-[var(--primary)]">About</a>
                         <a href="#contact" class="hover:text-[var(--primary)]">Contact</a>
+                        <span class="hidden sm:inline-block h-4 w-px bg-gray-300"></span>
+                        <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--primary)]">Twitter</a>
+                        <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--primary)]">Instagram</a>
+                        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--primary)]">GitHub</a>
                     </div>
                 </div>
             </div>

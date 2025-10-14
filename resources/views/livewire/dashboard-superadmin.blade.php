@@ -54,6 +54,9 @@ new class extends Component {
 }; ?>
 
 <div class="p-6 space-y-6 bg-[var(--bg-light)] dark:bg-[var(--bg-dark)]">
+    <div class="flex justify-end">
+        <img src="{{ auth()->user()->avatarUrl() }}" alt="Avatar" class="h-10 w-10 rounded-full border border-secondary" />
+    </div>
     <h2 class="tw-heading text-[var(--neutral-text)] dark:text-white">Superadmin Dashboard</h2>
     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">

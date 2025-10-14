@@ -23,6 +23,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'avatar_url',
         'matric_no',
         'password',
     ];
@@ -70,5 +71,15 @@ class User extends Authenticatable
     public function rides()
     {
         return $this->hasMany(Ride::class);
+    }
+
+    public function avatarUrl(): string
+    {
+        if (!empty($this->avatar_url)) {
+            return $this->avatar_url;
+        }
+
+        $seed = md5(($this->email ?? '') . '|' . ($this->name ?? ''));
+        return "https://api.dicebear.com/7.x/bottts-neutral/svg?seed={$seed}&backgroundType=gradientLinear&radius=50";
     }
 }

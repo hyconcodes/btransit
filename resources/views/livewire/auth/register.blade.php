@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rules;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -37,6 +38,10 @@ new #[Layout('components.layouts.auth')] class extends Component {
         [$local] = explode('@', $validated['email']);
         $parts = explode('.', $local);
         $validated['matric_no'] = $parts[1] ?? null;
+
+        // Generate random 3D avatar URL (DiceBear bottts-neutral)
+        $seed = (string) Str::uuid();
+        $validated['avatar_url'] = "https://api.dicebear.com/7.x/bottts-neutral/svg?seed={$seed}&backgroundType=gradientLinear&radius=50";
 
         event(new Registered(($user = User::create($validated))));
 

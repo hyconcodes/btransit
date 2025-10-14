@@ -25,6 +25,9 @@ new class extends Component {
 }; ?>
 
 <div class="p-6 space-y-6">
+    <div class="flex justify-end">
+        <img src="{{ auth()->user()->avatarUrl() }}" alt="Avatar" class="h-10 w-10 rounded-full border border-secondary" />
+    </div>
     <h2 class="tw-heading">User Dashboard</h2>
     @if (session('success'))
         <div class="card bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">

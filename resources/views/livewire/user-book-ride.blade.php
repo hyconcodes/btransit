@@ -24,6 +24,9 @@ new class extends Component {
     public string $editPickup = '';
     public string $editDestination = '';
     public ?int $new_driver_id = null;
+    public bool $showDetailsModal = false;
+    public ?int $detailsRideId = null;
+    public array $detailsPayments = [];
 
     public function mount(): void
     {
@@ -108,6 +111,24 @@ new class extends Component {
             ->orderByDesc('created_at')
             ->get()
             ->toArray();
+    }
+
+    public function openDetails(int $id): void
+    {
+        $ride = Ride::findOrFail($id);
+        if ($ride->user_id !== Auth::id()) {
+            return;
+        }
+        $this->detailsRideId = $id;
+        $this->detailsPayments = Payment::where('ride_id', $id)->orderByDesc('created_at')->get()->toArray();
+        $this->showDetailsModal = true;
+    }
+
+    public function closeDetails(): void
+    {
+        $this->showDetailsModal = false;
+        $this->detailsRideId = null;
+        $this->detailsPayments = [];
     }
 
     public function openEdit(int $id): void
@@ -245,6 +266,7 @@ new class extends Component {
                     <div class="tw-body">Fare: ₦{{ number_format($r['fare'], 2) }} · Payment: {{ $r['payment_status'] }} ({{ $r['payment_method'] }})</div>
 
                     <div class="flex flex-wrap gap-2">
+                        <flux:button variant="ghost" class="btn-outline-primary" wire:click="openDetails({{ $r['id'] }})">View Details</flux:button>
                         @if(in_array($r['status'], ['pending', 'accepted'], true) && $r['payment_status'] !== 'paid')
                             <flux:button wire:click="cancelRide({{ $r['id'] }})" variant="outline" class="text-red-600">Cancel</flux:button>
                         @endif
@@ -309,5 +331,40 @@ new class extends Component {
                 <flux:button variant="primary" wire:click="changeDriver">Update Driver</flux:button>
             </div>
         </div>
+    </flux:modal>
+
+    <flux:modal
+        name="ride-details-modal"
+        variant="dialog"
+        class="max-w-lg"
+        wire:model="showDetailsModal"
+        @close="$set('showDetailsModal', false)"
+    >
+        @if($detailsRideId)
+            @php($ride = \App\Models\Ride::find($detailsRideId))
+            <div class="grid gap-2">
+                <div class="tw-heading">Ride Details</div>
+                <div class="tw-body">Pickup: {{ $ride?->pickup }} → Destination: {{ $ride?->destination }}</div>
+                <div class="tw-body">Driver: {{ optional($ride?->driver)->vehicle_name ?? 'Auto-assign' }}</div>
+                <div class="tw-body">Fare: ₦{{ number_format($ride?->fare ?? 0, 2) }}</div>
+                <div class="tw-body">Status: <span class="font-semibold">{{ $ride?->status }}</span></div>
+                <div class="tw-heading mt-3">Payment History</div>
+                <div class="grid gap-2">
+                    @forelse($detailsPayments as $p)
+                        <div class="card">
+                            <div class="tw-body">Amount: ₦{{ number_format($p['amount'], 2) }}</div>
+                            <div class="tw-body">Method: {{ $p['payment_method'] }}</div>
+                            <div class="tw-body">Status: {{ $p['status'] }}</div>
+                            <div class="tw-body">Date: {{ \Illuminate\Support\Carbon::parse($p['created_at'])->format('M j, Y g:ia') }}</div>
+                        </div>
+                    @empty
+                        <div class="tw-body">No payments yet.</div>
+                    @endforelse
+                </div>
+                <div class="flex items-center gap-2 mt-4">
+                    <flux:button variant="outline" wire:click="closeDetails">Close</flux:button>
+                </div>
+            </div>
+        @endif
     </flux:modal>
 </div>

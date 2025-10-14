@@ -26,6 +26,17 @@
             <x-app-logo />
         </a>
 
+        <!-- Sidebar Avatar Card -->
+        @auth
+            <div class="mt-3 mb-4 flex items-center gap-3 rounded-lg border border-secondary bg-subtle-light p-3 dark:bg-subtle-dark">
+                <img src="{{ auth()->user()->avatarUrl() }}" alt="Avatar" class="h-10 w-10 rounded-full border border-secondary" />
+                <div class="min-w-0">
+                    <div class="truncate text-sm font-semibold text-primary">{{ auth()->user()->name }}</div>
+                    <div class="truncate text-xs text-zinc-600 dark:text-zinc-400">{{ auth()->user()->email }}</div>
+                </div>
+            </div>
+        @endauth
+
         <flux:navlist variant="outline">
             <flux:navlist.group :heading="__('Platform')" class="grid">
                 <flux:navlist.item icon="home" :href="route($dashboardRoute)" :current="request()->routeIs($dashboardRoute)"
@@ -79,10 +90,7 @@
                     <div class="p-0 text-sm font-normal">
                         <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
                             <span class="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-lg">
-                                <span
-                                    class="flex h-full w-full items-center justify-center rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                    {{ auth()->user()->initials() }}
-                                </span>
+                                <img src="{{ auth()->user()->avatarUrl() }}" alt="Avatar" class="h-8 w-8 rounded-lg border border-secondary" />
                             </span>
 
                             <div class="grid flex-1 text-start text-sm leading-tight">
@@ -132,10 +140,7 @@
                     <div class="p-0 text-sm font-normal">
                         <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
                             <span class="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-lg">
-                                <span
-                                    class="flex h-full w-full items-center justify-center rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                    {{ auth()->user()->initials() }}
-                                </span>
+                                <img src="{{ auth()->user()->avatarUrl() }}" alt="Avatar" class="h-8 w-8 rounded-lg border border-secondary" />
                             </span>
 
                             <div class="grid flex-1 text-start text-sm leading-tight">
