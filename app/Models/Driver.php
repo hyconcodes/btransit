@@ -14,7 +14,6 @@ class Driver extends Model
         'user_id',
         'vehicle_name',
         'plate_number',
-        'charge_rate',
         'status',
         'is_available',
     ];

@@ -27,7 +27,7 @@ new class extends Component {
                     [
                         'vehicle_name' => 'TBD',
                         'plate_number' => 'TBD',
-                        'charge_rate' => 0,
+
                         'status' => 'pending',
                         'is_available' => true,
                     ],
@@ -44,6 +44,7 @@ new class extends Component {
     {
         $driverId = optional(Auth::user()->driver)->id;
         $this->rides = Ride::where('driver_id', $driverId)
+            ->with('rating', 'user')
             ->orderByDesc('created_at')
             ->get()
             ->toArray();
@@ -153,7 +154,7 @@ new class extends Component {
                 [
                     'vehicle_name' => 'TBD',
                     'plate_number' => 'TBD',
-                    'charge_rate' => 0,
+
                     'status' => 'pending',
                     'is_available' => true,
                 ],
@@ -233,6 +234,7 @@ new class extends Component {
         @forelse ($rides as $r)
             <div class="card grid gap-2">
                 <div class="font-medium">{{ $r['pickup'] }} → {{ $r['destination'] }}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400">Ref: {{ $r['reference'] ?? 'N/A' }} · When: {{ isset($r['scheduled_at']) && $r['scheduled_at'] ? \Illuminate\Support\Carbon::parse($r['scheduled_at'])->format('M j, Y g:ia') : 'Not set' }}</div>
                 <div class="tw-body">Fare: ₦{{ number_format($r['fare'], 2) }} | Status: <span class="font-semibold">{{ $r['status'] }}</span></div>
                 <div class="tw-body">Payment: {{ $r['payment_status'] }} ({{ $r['payment_method'] }})</div>
                 @if($r['status'] === 'accepted' && $r['payment_status'] === 'pending')
@@ -306,10 +308,26 @@ new class extends Component {
             @php($ride = \App\Models\Ride::find($detailsRideId))
             <div class="grid gap-2">
                 <div class="tw-heading">Ride Details</div>
+                <div class="tw-body">Reference: {{ $ride?->reference ?? 'N/A' }}</div>
                 <div class="tw-body">Passenger: {{ optional($ride?->user)->name ?? 'Unknown' }}</div>
                 <div class="tw-body">Pickup: {{ $ride?->pickup }} → Destination: {{ $ride?->destination }}</div>
+                <div class="tw-body">When: {{ optional($ride?->scheduled_at) ? \Illuminate\Support\Carbon::parse($ride?->scheduled_at)->format('M j, Y g:ia') : 'Not set' }}</div>
                 <div class="tw-body">Fare: ₦{{ number_format($ride?->fare ?? 0, 2) }}</div>
                 <div class="tw-body">Status: <span class="font-semibold">{{ $ride?->status }}</span></div>
+                @if($ride && $ride->rating)
+                    <div class="tw-body">
+                        <span>Rating by {{ optional($ride->user)->name }}:</span>
+                        <span class="inline-flex items-center gap-0.5 align-middle">
+                            @for ($i = 1; $i <= 5; $i++)
+                                <span class="text-lg {{ $ride->rating->rating >= $i ? 'text-yellow-500' : 'text-gray-300' }}">★</span>
+                            @endfor
+                        </span>
+                        <span class="ml-1">({{ $ride->rating->rating }}/5)</span>
+                    </div>
+                    @if($ride->rating->comment)
+                        <div class="tw-body italic">"{{ $ride->rating->comment }}"</div>
+                    @endif
+                @endif
                 <div class="tw-heading mt-3">Payment History</div>
                 <div class="grid gap-2">
                     @forelse($detailsPayments as $p)

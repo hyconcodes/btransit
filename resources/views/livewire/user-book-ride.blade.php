@@ -3,6 +3,7 @@
 use App\Models\Driver;
 use App\Models\Ride;
 use App\Models\Payment;
+use App\Models\Rating;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
@@ -28,11 +29,21 @@ new class extends Component {
     public ?int $detailsRideId = null;
     public array $detailsPayments = [];
 
+    // Scheduling state
+    public ?string $scheduled_at = null;
+    public ?string $editScheduledAt = null;
+
+    // Rating state
+    public bool $showRateModal = false;
+    public ?int $rateRideId = null;
+    public ?int $rating = null;
+    public string $ratingComment = '';
+
     public function mount(): void
     {
         $this->drivers = Driver::where('status', 'approved')
             ->where('is_available', true)
-            ->orderBy('charge_rate')
+            ->orderBy('vehicle_name')
             ->get()
             ->toArray();
 
@@ -58,13 +69,14 @@ new class extends Component {
             'driver_id' => ['nullable', 'integer'],
             'pickup' => ['required', 'string', 'min:3'],
             'destination' => ['required', 'string', 'min:3'],
+            'scheduled_at' => ['required', 'date', 'after_or_equal:now'],
         ]);
 
         // Auto-assign if no driver was explicitly selected
         if (! $this->driver_id) {
             $driver = Driver::where('status', 'approved')
                 ->where('is_available', true)
-                ->orderBy('charge_rate')
+                ->orderBy('vehicle_name')
                 ->first();
 
             if (! $driver) {
@@ -95,6 +107,7 @@ new class extends Component {
             'payment_method' => 'cash',
             'payment_status' => 'pending',
             'status' => 'pending',
+            'scheduled_at' => $this->scheduled_at,
         ]);
 
         // Update counter for UI in case redirect is delayed
@@ -108,6 +121,7 @@ new class extends Component {
     public function refreshUserRides(): void
     {
         $this->myRides = Ride::where('user_id', Auth::id())
+            ->with('rating')
             ->orderByDesc('created_at')
             ->get()
             ->toArray();
@@ -140,6 +154,7 @@ new class extends Component {
         $this->editRideId = $id;
         $this->editPickup = (string) $ride->pickup;
         $this->editDestination = (string) $ride->destination;
+        $this->editScheduledAt = $ride->scheduled_at ? \Illuminate\Support\Carbon::parse($ride->scheduled_at)->format('Y-m-d\\TH:i') : null;
         $this->showEditModal = true;
     }
 
@@ -160,7 +175,26 @@ new class extends Component {
         if ($ride->status !== 'pending') {
             return;
         }
-        $ride->update(['pickup' => $this->editPickup, 'destination' => $this->editDestination]);
+
+        $scheduled = null;
+        if (!empty($this->editScheduledAt)) {
+            try {
+                $scheduled = \Illuminate\Support\Carbon::parse($this->editScheduledAt);
+            } catch (\Exception $e) {
+                $this->addError('editScheduledAt', 'Invalid schedule format.');
+                return;
+            }
+            if ($scheduled->lt(\Illuminate\Support\Carbon::now())) {
+                $this->addError('editScheduledAt', 'Schedule must be now or later.');
+                return;
+            }
+        }
+
+        $ride->update([
+            'pickup' => $this->editPickup,
+            'destination' => $this->editDestination,
+            'scheduled_at' => $scheduled,
+        ]);
         $this->showEditModal = false;
         $this->editRideId = null;
         $this->refreshUserRides();
@@ -214,6 +248,58 @@ new class extends Component {
         }
         $this->refreshUserRides();
     }
+
+    public function openRate(int $id): void
+    {
+        $ride = Ride::findOrFail($id);
+        if ($ride->user_id !== Auth::id()) {
+            return;
+        }
+        if ($ride->status !== 'completed') {
+            return;
+        }
+        if ($ride->rating) {
+            // already rated
+            return;
+        }
+        $this->rateRideId = $id;
+        $this->rating = null;
+        $this->ratingComment = '';
+        $this->showRateModal = true;
+    }
+
+    public function submitRating(): void
+    {
+        if (! $this->rateRideId) {
+            return;
+        }
+        $this->validate([
+            'rating' => ['required', 'integer', 'between:1,5'],
+            'ratingComment' => ['nullable', 'string', 'max:500'],
+        ]);
+        $ride = Ride::findOrFail($this->rateRideId);
+        if ($ride->user_id !== Auth::id()) {
+            return;
+        }
+        if ($ride->status !== 'completed') {
+            return;
+        }
+        if ($ride->rating) {
+            return;
+        }
+
+        Rating::create([
+            'ride_id' => $ride->id,
+            'user_id' => Auth::id(),
+            'driver_id' => $ride->driver_id,
+            'rating' => (int) $this->rating,
+            'comment' => $this->ratingComment ?: null,
+        ]);
+
+        $this->showRateModal = false;
+        $this->rateRideId = null;
+        $this->refreshUserRides();
+    }
 }; ?>
 
 <div class="p-6 space-y-6">
@@ -229,13 +315,18 @@ new class extends Component {
             <select wire:model="driver_id" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]">
                 <option value="">Auto-assign best available</option>
                 @foreach($drivers as $d)
-                    <option value="{{ $d['id'] }}">{{ $d['vehicle_name'] }} (₦{{ number_format($d['charge_rate'], 2) }})</option>
+                    <option value="{{ $d['id'] }}">{{ $d['vehicle_name'] }}</option>
                 @endforeach
             </select>
         </label>
 
         <flux:input wire:model="pickup" label="Pickup" />
         <flux:input wire:model="destination" label="Destination" />
+
+        <label class="grid gap-1">
+            <span class="tw-body">When</span>
+            <input type="datetime-local" wire:model="scheduled_at" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
+        </label>
 
         <!-- Payment selection is deferred until driver accepts and sets fare -->
 
@@ -250,7 +341,7 @@ new class extends Component {
                     <div class="flex items-start justify-between">
                         <div>
                             <div class="font-medium">{{ $r['pickup'] }} → {{ $r['destination'] }}</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-400">Driver: #{{ $r['driver_id'] }} · Created: {{ \Carbon\Carbon::parse($r['created_at'])->diffForHumans() }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">Ref: {{ $r['reference'] ?? 'N/A' }} · When: {{ isset($r['scheduled_at']) && $r['scheduled_at'] ? \Illuminate\Support\Carbon::parse($r['scheduled_at'])->format('M j, Y g:ia') : 'Not set' }} · Driver: #{{ $r['driver_id'] }} · Created: {{ \Carbon\Carbon::parse($r['created_at'])->diffForHumans() }}</div>
                         </div>
                         <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium
                             {{ $r['status'] === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' : '' }}
@@ -264,6 +355,14 @@ new class extends Component {
                     </div>
 
                     <div class="tw-body">Fare: ₦{{ number_format($r['fare'], 2) }} · Payment: {{ $r['payment_status'] }} ({{ $r['payment_method'] }})</div>
+                    @if(isset($r['rating']) && $r['rating'])
+                        <div class="flex items-center gap-1 text-sm">
+                            @for ($i = 1; $i <= 5; $i++)
+                                <span class="text-lg {{ $r['rating']['rating'] >= $i ? 'text-yellow-500' : 'text-gray-300' }}">★</span>
+                            @endfor
+                            <span class="ml-1">({{ $r['rating']['rating'] }}/5)</span>
+                        </div>
+                    @endif
 
                     <div class="flex flex-wrap gap-2">
                         <flux:button variant="ghost" class="btn-outline-primary" wire:click="openDetails({{ $r['id'] }})">View Details</flux:button>
@@ -282,6 +381,10 @@ new class extends Component {
                                 <input type="hidden" name="ride_id" value="{{ $r['id'] }}" />
                                 <flux:button type="submit" variant="primary" class="btn-primary">Pay with Paystack</flux:button>
                             </form>
+                        @endif
+
+                        @if($r['status'] === 'completed' && empty($r['rating']))
+                            <flux:button variant="primary" class="btn-primary" wire:click="openRate({{ $r['id'] }})">Rate Driver</flux:button>
                         @endif
                     </div>
                 </div>
@@ -302,6 +405,10 @@ new class extends Component {
             <div class="tw-heading">Edit Ride Details</div>
             <flux:input wire:model="editPickup" label="Pickup" />
             <flux:input wire:model="editDestination" label="Destination" />
+            <label class="grid gap-1">
+                <span class="tw-body">When</span>
+                <input type="datetime-local" wire:model="editScheduledAt" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
+            </label>
             <div class="flex items-center gap-2">
                 <flux:button variant="outline" wire:click="$set('showEditModal', false)">Cancel</flux:button>
                 <flux:button variant="primary" wire:click="updateRideDetails">Save Changes</flux:button>
@@ -322,13 +429,49 @@ new class extends Component {
                 <span class="tw-body">Select Driver</span>
                 <select wire:model="new_driver_id" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]">
                     @foreach($drivers as $d)
-                        <option value="{{ $d['id'] }}">{{ $d['vehicle_name'] }} (₦{{ number_format($d['charge_rate'], 2) }})</option>
+                        <option value="{{ $d['id'] }}">{{ $d['vehicle_name'] }}</option>
                     @endforeach
                 </select>
             </label>
             <div class="flex items-center gap-2">
                 <flux:button variant="outline" wire:click="$set('showChangeDriverModal', false)">Cancel</flux:button>
                 <flux:button variant="primary" wire:click="changeDriver">Update Driver</flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    <flux:modal
+        name="rate-ride-modal"
+        variant="dialog"
+        class="max-w-lg"
+        wire:model="showRateModal"
+        @close="$set('showRateModal', false)"
+    >
+        <div class="grid gap-4">
+            <div class="tw-heading">Rate Driver</div>
+            <label class="grid gap-1">
+                <span class="tw-body">Rating</span>
+                <div class="flex items-center gap-1">
+                    @for ($i = 1; $i <= 5; $i++)
+                        <button
+                            type="button"
+                            class="text-2xl leading-none focus:outline-none {{ ($rating ?? 0) >= $i ? 'text-yellow-500' : 'text-gray-300' }}"
+                            wire:click="$set('rating', {{ $i }})"
+                            aria-label="Rate {{ $i }} star{{ $i > 1 ? 's' : '' }}"
+                        >
+                            ★
+                        </button>
+                    @endfor
+                    <span class="ml-2 text-sm">{{ $rating ? $rating.'/5' : 'Select rating' }}</span>
+                </div>
+            </label>
+            <label class="grid gap-1">
+                <span class="tw-body">Comment (optional)</span>
+                <textarea wire:model="ratingComment" rows="3" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]"></textarea>
+            </label>
+            <div class="flex items-center gap-2">
+                <flux:button variant="outline" wire:click="$set('showRateModal', false)">Cancel</flux:button>
+                <flux:button variant="primary" wire:click="submitRating">Submit Rating</flux:button>
             </div>
         </div>
     </flux:modal>
@@ -344,10 +487,28 @@ new class extends Component {
             @php($ride = \App\Models\Ride::find($detailsRideId))
             <div class="grid gap-2">
                 <div class="tw-heading">Ride Details</div>
+                <div class="tw-body">Reference: {{ $ride?->reference ?? 'N/A' }}</div>
                 <div class="tw-body">Pickup: {{ $ride?->pickup }} → Destination: {{ $ride?->destination }}</div>
+                <div class="tw-body">When: {{ optional($ride?->scheduled_at) ? \Illuminate\Support\Carbon::parse($ride?->scheduled_at)->format('M j, Y g:ia') : 'Not set' }}</div>
                 <div class="tw-body">Driver: {{ optional($ride?->driver)->vehicle_name ?? 'Auto-assign' }}</div>
                 <div class="tw-body">Fare: ₦{{ number_format($ride?->fare ?? 0, 2) }}</div>
                 <div class="tw-body">Status: <span class="font-semibold">{{ $ride?->status }}</span></div>
+                @if($ride && $ride->rating)
+                    <div class="tw-body">
+                        <span>Rating:</span>
+                        <span class="inline-flex items-center gap-0.5 align-middle">
+                            @for ($i = 1; $i <= 5; $i++)
+                                <span class="text-lg {{ $ride->rating->rating >= $i ? 'text-yellow-500' : 'text-gray-300' }}">★</span>
+                            @endfor
+                        </span>
+                        <span class="ml-1">({{ $ride->rating->rating }}/5)</span>
+                    </div>
+                    @if($ride->rating->comment)
+                        <div class="tw-body italic">"{{ $ride->rating->comment }}"</div>
+                    @endif
+                @elseif($ride && $ride->status === 'completed')
+                    <flux:button variant="primary" wire:click="openRate({{ $ride->id }})">Rate Driver</flux:button>
+                @endif
                 <div class="tw-heading mt-3">Payment History</div>
                 <div class="grid gap-2">
                     @forelse($detailsPayments as $p)

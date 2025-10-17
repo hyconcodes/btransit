@@ -54,7 +54,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
                 [
                     'vehicle_name' => 'TBD',
                     'plate_number' => 'TBD',
-                    'charge_rate' => 0,
+
                     'status' => 'pending',
                     'is_available' => true,
                 ],

@@ -12,7 +12,7 @@ new class extends Component {
 
     public function mount(): void
     {
-        $this->approvedDrivers = Driver::where('status', 'approved')->where('is_available', true)->orderBy('vehicle_name')->get()->toArray();
+        $this->approvedDrivers = Driver::where('status', 'approved')->where('is_available', true)->with('user')->orderBy('vehicle_name')->get()->toArray();
         $this->completedRides = Ride::where('user_id', Auth::id())->where('status', 'completed')->count();
         $this->awaitingPayment = Ride::where('user_id', Auth::id())
             ->whereIn('status', ['accepted', 'in_progress', 'completed'])
@@ -25,9 +25,7 @@ new class extends Component {
 }; ?>
 
 <div class="p-6 space-y-6">
-    <div class="flex justify-end">
-        <img src="{{ auth()->user()->avatarUrl() }}" alt="Avatar" class="h-10 w-10 rounded-full border border-secondary" />
-    </div>
+    
     <h2 class="tw-heading">User Dashboard</h2>
     @if (session('success'))
         <div class="card bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">
@@ -51,6 +49,7 @@ new class extends Component {
                     <div class="card flex items-center justify-between">
                         <div>
                             <div class="font-medium">{{ $r['pickup'] }} → {{ $r['destination'] }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">Ref: {{ $r['reference'] ?? 'N/A' }} · When: {{ isset($r['scheduled_at']) && $r['scheduled_at'] ? \Illuminate\Support\Carbon::parse($r['scheduled_at'])->format('M j, Y g:ia') : 'Not set' }}</div>
                             <div class="tw-body">Fare: ₦{{ number_format($r['fare'], 2) }} · Status: {{ $r['status'] }}</div>
                         </div>
                         <form method="POST" action="{{ route('payment.initialize') }}">
@@ -68,7 +67,7 @@ new class extends Component {
             <div class="tw-heading">Available Drivers</div>
             <ul class="list-disc ms-5">
                 @forelse($approvedDrivers as $d)
-                    <li class="tw-body">{{ $d['vehicle_name'] }} — ₦{{ number_format($d['charge_rate'], 2) }}</li>
+                    <li class="tw-body">{{ $d['user']['name'] }} — {{ $d['vehicle_name'] }}</li>
                 @empty
                     <li class="tw-body">No drivers available</li>
                 @endforelse

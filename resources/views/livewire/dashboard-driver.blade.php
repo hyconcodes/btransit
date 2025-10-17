@@ -19,9 +19,7 @@ new class extends Component {
 }; ?>
 
 <div class="p-6 space-y-6">
-    <div class="flex justify-end">
-        <img src="{{ auth()->user()->avatarUrl() }}" alt="Avatar" class="h-10 w-10 rounded-full border border-secondary" />
-    </div>
+    
     <h2 class="tw-heading">Driver Dashboard</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="card">

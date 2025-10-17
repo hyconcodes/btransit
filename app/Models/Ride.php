@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Ride extends Model
 {
@@ -19,7 +20,24 @@ class Ride extends Model
         'payment_method',
         'payment_status',
         'status',
+        'scheduled_at',
+        'reference',
     ];
+
+    protected $casts = [
+        'scheduled_at' => 'datetime',
+    ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function (Ride $ride) {
+            if (empty($ride->reference)) {
+                $ride->reference = 'RIDE-' . Str::upper(Str::random(8));
+            }
+        });
+    }
 
     public function user()
     {

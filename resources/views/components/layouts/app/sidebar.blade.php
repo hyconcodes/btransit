@@ -33,6 +33,9 @@
                 <div class="min-w-0">
                     <div class="truncate text-sm font-semibold text-primary">{{ auth()->user()->name }}</div>
                     <div class="truncate text-xs text-zinc-600 dark:text-zinc-400">{{ auth()->user()->email }}</div>
+                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-500">
+                        {{ auth()->user()->hasRole('user') ? 'Passenger' : auth()->user()->getRoleNames()->first() }}
+                    </div>
                 </div>
             </div>
         @endauth
