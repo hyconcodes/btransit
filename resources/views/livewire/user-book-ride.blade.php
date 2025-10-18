@@ -62,15 +62,23 @@ new class extends Component {
             ->count();
         if ($pending >= 2) {
             $this->limitError = 'You already have 2 pending rides. Please complete or cancel one before booking another.';
+            $this->dispatch('toast', type: 'error', message: 'You already have 2 pending rides.');
             return;
         }
 
-        $this->validate([
-            'driver_id' => ['nullable', 'integer'],
-            'pickup' => ['required', 'string', 'min:3'],
-            'destination' => ['required', 'string', 'min:3'],
-            'scheduled_at' => ['required', 'date', 'after_or_equal:now'],
-        ]);
+        try {
+            $this->validate([
+                'driver_id' => ['nullable', 'integer'],
+                'pickup' => ['required', 'string', 'min:3'],
+                'destination' => ['required', 'string', 'min:3'],
+                'scheduled_at' => ['required', 'date', 'after_or_equal:now'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            foreach ($e->validator->errors()->all() as $msg) {
+                $this->dispatch('toast', type: 'error', message: $msg);
+            }
+            return;
+        }
 
         // Auto-assign if no driver was explicitly selected
         if (! $this->driver_id) {
@@ -81,6 +89,7 @@ new class extends Component {
 
             if (! $driver) {
                 $this->addError('driver_id', 'No available drivers at the moment.');
+                $this->dispatch('toast', type: 'error', message: 'No available drivers at the moment.');
                 return;
             }
         } else {
@@ -91,6 +100,7 @@ new class extends Component {
 
             if (! $driver) {
                 $this->addError('driver_id', 'Selected driver is not available or not approved.');
+                $this->dispatch('toast', type: 'error', message: 'Selected driver not available or not approved.');
                 return;
             }
         }
@@ -114,6 +124,8 @@ new class extends Component {
         $this->pendingCount = $pending + 1;
 
         // Inform UI and redirect; payment happens after driver acceptance
+        session()->flash('success', 'Ride requested. Awaiting driver acceptance.');
+        $this->dispatch('toast', type: 'success', message: 'Ride requested. Awaiting driver acceptance.');
         $this->dispatch('ride-booked', id: $ride->id);
         $this->redirect(route('user.dashboard'), navigate: true);
     }
@@ -163,10 +175,17 @@ new class extends Component {
         if (! $this->editRideId) {
             return;
         }
-        $this->validate([
-            'editPickup' => ['required', 'string', 'min:3'],
-            'editDestination' => ['required', 'string', 'min:3'],
-        ]);
+        try {
+            $this->validate([
+                'editPickup' => ['required', 'string', 'min:3'],
+                'editDestination' => ['required', 'string', 'min:3'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            foreach ($e->validator->errors()->all() as $msg) {
+                $this->dispatch('toast', type: 'error', message: $msg);
+            }
+            return;
+        }
 
         $ride = Ride::findOrFail($this->editRideId);
         if ($ride->user_id !== Auth::id()) {
@@ -182,10 +201,12 @@ new class extends Component {
                 $scheduled = \Illuminate\Support\Carbon::parse($this->editScheduledAt);
             } catch (\Exception $e) {
                 $this->addError('editScheduledAt', 'Invalid schedule format.');
+                $this->dispatch('toast', type: 'error', message: 'Invalid schedule format.');
                 return;
             }
             if ($scheduled->lt(\Illuminate\Support\Carbon::now())) {
                 $this->addError('editScheduledAt', 'Schedule must be now or later.');
+                $this->dispatch('toast', type: 'error', message: 'Schedule must be now or later.');
                 return;
             }
         }
@@ -198,6 +219,7 @@ new class extends Component {
         $this->showEditModal = false;
         $this->editRideId = null;
         $this->refreshUserRides();
+        $this->dispatch('toast', type: 'success', message: 'Ride details updated.');
     }
 
     public function openChangeDriver(int $id): void
@@ -229,12 +251,14 @@ new class extends Component {
             ->where('is_available', true)
             ->first();
         if (! $driver) {
+            $this->dispatch('toast', type: 'error', message: 'Selected driver not available.');
             return;
         }
         $ride->update(['driver_id' => $driver->id]);
         $this->showChangeDriverModal = false;
         $this->editRideId = null;
         $this->refreshUserRides();
+        $this->dispatch('toast', type: 'success', message: 'Driver changed.');
     }
 
     public function cancelRide(int $id): void
@@ -245,6 +269,9 @@ new class extends Component {
         }
         if (in_array($ride->status, ['pending', 'accepted'], true) && $ride->payment_status !== 'paid') {
             $ride->update(['status' => 'cancelled']);
+            $this->dispatch('toast', type: 'success', message: 'Ride cancelled.');
+        } else {
+            $this->dispatch('toast', type: 'error', message: 'Unable to cancel this ride.');
         }
         $this->refreshUserRides();
     }
@@ -256,10 +283,12 @@ new class extends Component {
             return;
         }
         if ($ride->status !== 'completed') {
+            $this->dispatch('toast', type: 'error', message: 'Only completed rides can be rated.');
             return;
         }
         if ($ride->rating) {
             // already rated
+            $this->dispatch('toast', type: 'error', message: 'You have already rated this ride.');
             return;
         }
         $this->rateRideId = $id;
@@ -273,18 +302,27 @@ new class extends Component {
         if (! $this->rateRideId) {
             return;
         }
-        $this->validate([
-            'rating' => ['required', 'integer', 'between:1,5'],
-            'ratingComment' => ['nullable', 'string', 'max:500'],
-        ]);
+        try {
+            $this->validate([
+                'rating' => ['required', 'integer', 'between:1,5'],
+                'ratingComment' => ['nullable', 'string', 'max:500'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            foreach ($e->validator->errors()->all() as $msg) {
+                $this->dispatch('toast', type: 'error', message: $msg);
+            }
+            return;
+        }
         $ride = Ride::findOrFail($this->rateRideId);
         if ($ride->user_id !== Auth::id()) {
             return;
         }
         if ($ride->status !== 'completed') {
+            $this->dispatch('toast', type: 'error', message: 'Only completed rides can be rated.');
             return;
         }
         if ($ride->rating) {
+            $this->dispatch('toast', type: 'error', message: 'You have already rated this ride.');
             return;
         }
 
@@ -299,6 +337,7 @@ new class extends Component {
         $this->showRateModal = false;
         $this->rateRideId = null;
         $this->refreshUserRides();
+        $this->dispatch('toast', type: 'success', message: 'Thanks for rating your driver.');
     }
 }; ?>
 
@@ -326,6 +365,7 @@ new class extends Component {
         <label class="grid gap-1">
             <span class="tw-body">When</span>
             <input type="datetime-local" wire:model="scheduled_at" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
+            
         </label>
 
         <!-- Payment selection is deferred until driver accepts and sets fare -->
@@ -334,7 +374,10 @@ new class extends Component {
     </form>
 
     <div class="space-y-4">
-        <div class="tw-heading">My Rides</div>
+        <div class="flex items-center justify-between">
+            <div class="tw-heading">My Rides</div>
+            <a href="{{ route('user.rides.export.pdf') }}" target="_blank" class="btn-outline-primary">Export PDF</a>
+        </div>
         <div class="grid gap-3">
             @forelse($myRides as $r)
                 <div class="card grid gap-2">

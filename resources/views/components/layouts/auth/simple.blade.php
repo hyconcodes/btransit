@@ -17,6 +17,7 @@
                 </div>
             </div>
         </div>
+        @include('partials.toast')
         @fluxScripts
     </body>
 </html>

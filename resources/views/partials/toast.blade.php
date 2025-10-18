@@ -3,6 +3,7 @@
         <div :class="['toast', t.type === 'success' ? 'toast-success' : 'toast-error']" x-show="t.show" x-transition>
             <span class="toast-icon"></span>
             <span class="tw-body" x-text="t.message"></span>
+            <button @click="remove(t.id)" class="toast-cancel" aria-label="Close">&times;</button>
         </div>
     </template>
 </div>
@@ -28,6 +29,13 @@
                 this.toasts.push(toast);
                 setTimeout(() => { toast.show = false; }, 3500);
                 setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 4000);
+            },
+            remove(id) {
+                const toast = this.toasts.find(t => t.id === id);
+                if (toast) {
+                    toast.show = false;
+                    setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 300);
+                }
             }
         };
     }

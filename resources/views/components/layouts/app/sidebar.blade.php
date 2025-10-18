@@ -176,7 +176,9 @@
 
     {{ $slot }}
 
-    @include('partials.toast')
+    @unless (request()->routeIs('dashboard') || request()->routeIs('admin.dashboard') || request()->routeIs('driver.dashboard') || request()->routeIs('user.dashboard'))
+        @include('partials.toast')
+    @endunless
 
     @fluxScripts
 </body>

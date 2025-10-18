@@ -5,6 +5,8 @@ use App\Models\Payment;
 use App\Models\Driver;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 new class extends Component {
     public array $rides = [];
@@ -52,57 +54,104 @@ new class extends Component {
 
     public function accept(int $id): void
     {
-        $ride = Ride::findOrFail($id);
+        try {
+            $ride = Ride::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
         if ((float) $ride->fare <= 0) {
+            $this->dispatch('toast', type: 'error', message: 'Set a valid fare before accepting.');
             return;
         }
         $ride->status = 'accepted';
         $ride->save();
         $this->refreshRides();
+        $this->dispatch('toast', type: 'success', message: 'Ride accepted.');
     }
 
     public function reject(int $id): void
     {
-        $ride = Ride::findOrFail($id);
+        try {
+            $ride = Ride::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
         $ride->status = 'cancelled';
         $ride->save();
         $this->refreshRides();
+        $this->dispatch('toast', type: 'success', message: 'Ride rejected.');
     }
 
     public function start(int $id): void
     {
-        $ride = Ride::findOrFail($id);
+        try {
+            $ride = Ride::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
+        if ($ride->status !== 'accepted') {
+            $this->dispatch('toast', type: 'error', message: 'Only accepted rides can be started.');
+            return;
+        }
         $ride->status = 'in_progress';
         $ride->save();
         $this->refreshRides();
+        $this->dispatch('toast', type: 'success', message: 'Ride started.');
     }
 
     public function complete(int $id): void
     {
-        $ride = Ride::findOrFail($id);
+        try {
+            $ride = Ride::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
+        if ($ride->status !== 'in_progress') {
+            $this->dispatch('toast', type: 'error', message: 'Only in-progress rides can be completed.');
+            return;
+        }
         $ride->status = 'completed';
         $ride->save();
         $this->refreshRides();
+        $this->dispatch('toast', type: 'success', message: 'Ride completed.');
     }
 
     public function promptComplete(int $id): void
     {
-        $ride = Ride::findOrFail($id);
+        try {
+            $ride = Ride::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
         if ($ride->status !== 'in_progress') {
+            $this->dispatch('toast', type: 'error', message: 'Only in-progress rides can be completed.');
             return;
         }
         $this->completeRideId = $id;
         $this->showCompleteModal = true;
+        $this->dispatch('toast', type: 'info', message: 'Confirm cash completion.');
     }
 
     public function completeWithCash(): void
     {
         if (! $this->completeRideId) {
+            $this->dispatch('toast', type: 'error', message: 'No ride selected to complete.');
             return;
         }
 
-        $ride = Ride::findOrFail($this->completeRideId);
+        try {
+            $ride = Ride::findOrFail($this->completeRideId);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
         if ($ride->status !== 'in_progress') {
+            $this->dispatch('toast', type: 'error', message: 'Only in-progress rides can be completed.');
             return;
         }
 
@@ -117,18 +166,26 @@ new class extends Component {
         $this->showCompleteModal = false;
         $this->completeRideId = null;
         $this->refreshRides();
+        $this->dispatch('toast', type: 'success', message: 'Ride completed with cash payment.');
     }
 
     public function closeModal(): void
     {
         $this->showCompleteModal = false;
         $this->completeRideId = null;
+        $this->dispatch('toast', type: 'info', message: 'Completion cancelled.');
     }
 
     public function confirmCash(int $id): void
     {
-        $ride = Ride::findOrFail($id);
+        try {
+            $ride = Ride::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
         if ($ride->status !== 'accepted' || (float) $ride->fare <= 0) {
+            $this->dispatch('toast', type: 'error', message: 'Cannot confirm cash. Ride must be accepted and fare set.');
             return;
         }
         $payment = Payment::firstOrCreate(
@@ -139,11 +196,13 @@ new class extends Component {
         $payment->update(['status' => 'success', 'paid_at' => now()]);
         $ride->update(['payment_status' => 'paid']);
         $this->refreshRides();
+        $this->dispatch('toast', type: 'success', message: 'Cash payment confirmed.');
     }
 
     public function toggleAvailability(): void
     {
         if (! Auth::check()) {
+            $this->dispatch('toast', type: 'error', message: 'Please sign in to change availability.');
             return;
         }
 
@@ -164,14 +223,32 @@ new class extends Component {
         $driver->is_available = ! (bool) $driver->is_available;
         $driver->save();
         $this->is_available = (bool) $driver->is_available;
+        $this->dispatch('toast', type: 'success', message: $this->is_available ? 'You are now available.' : 'You are now unavailable.');
     }
 
     public function proposeAndAccept(int $id): void
     {
-        $ride = Ride::findOrFail($id);
-        $amount = (float) ($this->fareOffer[$id] ?? 0);
+        try {
+            $this->validate([
+                'fareOffer.' . $id => ['required', 'numeric', 'min:1'],
+            ]);
+        } catch (ValidationException $e) {
+            foreach ($e->validator->errors()->all() as $msg) {
+                $this->dispatch('toast', type: 'error', message: $msg);
+            }
+            return;
+        }
 
+        try {
+            $ride = Ride::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
+
+        $amount = (float) ($this->fareOffer[$id] ?? 0);
         if ($amount <= 0) {
+            $this->dispatch('toast', type: 'error', message: 'Enter a positive fare amount.');
             return;
         }
 
@@ -179,18 +256,26 @@ new class extends Component {
         $ride->status = 'accepted';
         $ride->save();
         $this->refreshRides();
+        $this->dispatch('toast', type: 'success', message: 'Fare set to ₦' . number_format($amount, 2) . ' and ride accepted.');
     }
 
     public function openDetails(int $id): void
     {
-        $ride = Ride::findOrFail($id);
+        try {
+            $ride = Ride::findOrFail($id);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Ride not found.');
+            return;
+        }
         $driverId = optional(Auth::user()->driver)->id;
         if ($ride->driver_id !== $driverId) {
+            $this->dispatch('toast', type: 'error', message: 'You can only view details of your rides.');
             return;
         }
         $this->detailsRideId = $id;
         $this->detailsPayments = Payment::where('ride_id', $id)->orderByDesc('created_at')->get()->toArray();
         $this->showDetailsModal = true;
+        $this->dispatch('toast', type: 'info', message: 'Loaded ride details.');
     }
 
     public function closeDetails(): void
@@ -198,11 +283,15 @@ new class extends Component {
         $this->showDetailsModal = false;
         $this->detailsRideId = null;
         $this->detailsPayments = [];
+        $this->dispatch('toast', type: 'info', message: 'Closed ride details.');
     }
 }; ?>
 
 <div class="p-6 space-y-6">
-    <h2 class="tw-heading">My Rides</h2>
+    <div class="flex items-center justify-between">
+        <h2 class="tw-heading">My Rides</h2>
+        <a href="{{ route('driver.rides.export.pdf') }}" target="_blank" class="btn-outline-primary">Export PDF</a>
+    </div>
 
     <div class="flex items-center gap-3">
         <div class="text-sm">Availability: <span class="font-semibold">{{ $is_available ? 'Available' : 'Unavailable' }}</span></div>

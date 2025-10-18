@@ -263,5 +263,7 @@
             window.addEventListener('hashchange', setActive);
             window.addEventListener('load', setActive);
         </script>
+        @include('partials.toast')
+        @fluxScripts
     </body>
 </html>

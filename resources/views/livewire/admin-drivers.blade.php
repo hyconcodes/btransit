@@ -25,23 +25,40 @@ new class extends Component {
 
     public function toggleApproval(int $id): void
     {
-        $driver = Driver::findOrFail($id);
+        try {
+            $driver = Driver::findOrFail($id);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Driver not found.');
+            return;
+        }
         $driver->status = $driver->status === 'approved' ? 'pending' : 'approved';
         $driver->save();
         $this->refreshDrivers();
+        $this->dispatch('toast', type: 'success', message: $driver->status === 'approved' ? 'Driver approved.' : 'Driver set to pending.');
     }
 
     public function toggleAvailability(int $id): void
     {
-        $driver = Driver::findOrFail($id);
+        try {
+            $driver = Driver::findOrFail($id);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Driver not found.');
+            return;
+        }
         $driver->is_available = !(bool) $driver->is_available;
         $driver->save();
         $this->refreshDrivers();
+        $this->dispatch('toast', type: 'success', message: $driver->is_available ? 'Driver set available.' : 'Driver set unavailable.');
     }
 
     public function openDriverRides(int $id): void
     {
-        $driver = Driver::findOrFail($id);
+        try {
+            $driver = Driver::findOrFail($id);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Driver not found.');
+            return;
+        }
         $this->selectedDriverId = $id;
         $this->driverRides = Ride::where('driver_id', $id)->orderByDesc('created_at')->get()->toArray();
         $this->paymentsByRide = [];
@@ -49,6 +66,7 @@ new class extends Component {
             $this->paymentsByRide[$ride['id']] = Payment::where('ride_id', $ride['id'])->orderByDesc('created_at')->get()->toArray();
         }
         $this->showDriverRidesModal = true;
+        $this->dispatch('toast', type: 'success', message: 'Loaded ' . count($this->driverRides) . ' rides.');
     }
 
     public function closeDriverRides(): void

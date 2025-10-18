@@ -4,6 +4,8 @@ use Livewire\Volt\Component;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 new class extends Component {
     public array $roles = [];
@@ -33,58 +35,94 @@ new class extends Component {
 
     public function createRole(): void
     {
-        $this->validate(['roleName' => ['required', 'string', 'max:50']]);
+        try {
+            $this->validate(['roleName' => ['required', 'string', 'max:50']]);
+        } catch (ValidationException $e) {
+            foreach ($e->validator->errors()->all() as $msg) {
+                $this->dispatch('toast', type: 'error', message: $msg);
+            }
+            return;
+        }
         Role::findOrCreate($this->roleName);
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
         $this->status = 'Role created successfully.';
+        $this->dispatch('toast', type: 'success', message: 'Role created successfully.');
         $this->roleName = '';
         $this->loadData();
     }
 
     public function createPermission(): void
     {
-        $this->validate(['permissionName' => ['required', 'string', 'max:100']]);
+        try {
+            $this->validate(['permissionName' => ['required', 'string', 'max:100']]);
+        } catch (ValidationException $e) {
+            foreach ($e->validator->errors()->all() as $msg) {
+                $this->dispatch('toast', type: 'error', message: $msg);
+            }
+            return;
+        }
         Permission::findOrCreate($this->permissionName, 'web');
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
         $this->status = 'Permission created successfully.';
+        $this->dispatch('toast', type: 'success', message: 'Permission created successfully.');
         $this->permissionName = '';
         $this->loadData();
     }
 
     public function sync(int $roleId): void
     {
-        $role = Role::findOrFail($roleId);
+        try {
+            $role = Role::findOrFail($roleId);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Role not found.');
+            return;
+        }
         $names = $this->rolePermissions[$roleId] ?? [];
         $role->syncPermissions($names);
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
         $this->status = 'Role permissions updated.';
+        $this->dispatch('toast', type: 'success', message: 'Role permissions updated.');
         $this->loadData();
     }
 
     public function deleteRole(int $roleId): void
     {
-        $role = Role::findOrFail($roleId);
+        try {
+            $role = Role::findOrFail($roleId);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Role not found.');
+            return;
+        }
         if (strtolower($role->name) === 'superadmin') {
             $this->status = 'Cannot delete the superadmin role.';
+            $this->dispatch('toast', type: 'error', message: 'Cannot delete the superadmin role.');
             return;
         }
 
         $role->delete();
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
         $this->status = 'Role deleted.';
+        $this->dispatch('toast', type: 'success', message: 'Role deleted.');
         $this->loadData();
     }
 
     public function promptDelete(int $roleId): void
     {
-        $role = Role::findOrFail($roleId);
+        try {
+            $role = Role::findOrFail($roleId);
+        } catch (ModelNotFoundException $e) {
+            $this->dispatch('toast', type: 'error', message: 'Role not found.');
+            return;
+        }
         if (strtolower($role->name) === 'superadmin') {
             $this->status = 'Cannot delete the superadmin role.';
+            $this->dispatch('toast', type: 'error', message: 'Cannot delete the superadmin role.');
             return;
         }
         $this->deleteRoleId = $roleId;
         $this->deleteRoleName = $role->name;
         $this->confirmingDelete = true;
+        $this->dispatch('toast', type: 'info', message: 'Confirm deletion for role: ' . $role->name);
     }
 
     public function cancelDelete(): void
@@ -92,6 +130,7 @@ new class extends Component {
         $this->confirmingDelete = false;
         $this->deleteRoleId = null;
         $this->deleteRoleName = null;
+        $this->dispatch('toast', type: 'info', message: 'Deletion cancelled.');
     }
 
     public function confirmDelete(): void

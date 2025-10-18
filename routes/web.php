@@ -6,6 +6,7 @@ use Livewire\Volt\Volt;
 use App\Models\Ride;
 use App\Models\Payment;
 use App\Models\Driver;
+use App\Http\Controllers\RideExportController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -39,16 +40,31 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Volt::route('admin', 'dashboard-superadmin')->middleware('permission:can.view.superadmin.dashboard')->name('admin.dashboard');
     Volt::route('admin/drivers', 'admin-drivers')->middleware('permission:can.manage.drivers')->name('admin.drivers');
     Volt::route('admin/roles', 'admin-roles')->middleware('permission:can.manage.roles')->name('admin.roles');
+
+    // PDF export for superadmin
+    Route::get('admin/rides/export/pdf', [RideExportController::class, 'adminRidesPdf'])
+        ->middleware('permission:can.view.superadmin.dashboard')
+        ->name('admin.rides.export.pdf');
 });
 
 Route::middleware(['auth', 'role:driver'])->group(function () {
     Volt::route('driver', 'dashboard-driver')->name('driver.dashboard');
     Volt::route('driver/rides', 'driver-rides')->middleware('permission:can.view.assigned.rides')->name('driver.rides');
+
+    // PDF export for driver
+    Route::get('driver/rides/export/pdf', [RideExportController::class, 'driverRidesPdf'])
+        ->middleware('permission:can.view.assigned.rides')
+        ->name('driver.rides.export.pdf');
 });
 
 Route::middleware(['auth', 'role:user'])->group(function () {
     Volt::route('user', 'dashboard-user')->name('user.dashboard');
     Volt::route('user/rides/book', 'user-book-ride')->middleware('permission:can.book.ride')->name('user.rides.book');
+
+    // PDF export for user
+    Route::get('user/rides/export/pdf', [RideExportController::class, 'userRidesPdf'])
+        ->middleware('permission:can.book.ride')
+        ->name('user.rides.export.pdf');
 });
 
 // Payment routes
