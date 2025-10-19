@@ -376,7 +376,7 @@ new class extends Component {
     <div class="space-y-4">
         <div class="flex items-center justify-between">
             <div class="tw-heading">My Rides</div>
-            <a href="{{ route('user.rides.export.pdf') }}" target="_blank" class="btn-outline-primary">Export PDF</a>
+            {{-- Export disabled for users --}}
         </div>
         <div class="grid gap-3">
             @forelse($myRides as $r)

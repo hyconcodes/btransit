@@ -10,26 +10,39 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class RideExportController extends Controller
 {
-    public function adminRidesPdf()
+    public function adminRidesPdf(Request $request)
     {
-        $rides = Ride::with(['user', 'driver.user', 'payment'])
-            ->orderByDesc('created_at')
-            ->get();
+        $fromInput = $request->query('from');
+        $toInput = $request->query('to');
+        $from = null;
+        $to = null;
+        try { if (!empty($fromInput)) { $from = Carbon::parse($fromInput); } } catch (\Throwable $e) { $from = null; }
+        try { if (!empty($toInput)) { $to = Carbon::parse($toInput); } } catch (\Throwable $e) { $to = null; }
+
+        $query = Ride::with(['user', 'driver.user', 'payment'])
+            ->where('status', 'completed');
+        if ($from) { $query->where('created_at', '>=', $from); }
+        if ($to) { $query->where('created_at', '<=', $to); }
+
+        $rides = $query->orderByDesc('created_at')->get();
 
         $data = [
-            'title' => 'All Rides History',
-            'subtitle' => 'Complete list of rides and payments',
-            'scope' => 'admin',
+            // 'title' => 'Completed Rides History',
+            'subtitle' => 'Filtered by selected date range',
+            'scope' => 'completed',
             'rides' => $rides,
             'generatedAt' => now(),
+            'filters' => [
+                'from' => $from ? $from->format('M j, Y g:ia') : null,
+                'to' => $to ? $to->format('M j, Y g:ia') : null,
+            ],
         ];
 
         try {
             return Pdf::loadView('pdf.rides', $data)
                 ->setPaper('a4', 'portrait')
-                ->download('btransit-rides-all.pdf');
+                ->download('btransit-rides-' . now()->format('Ymd-His') . '.pdf');
         } catch (\Throwable $e) {
-            // Fallback to HTML view if PDF library is not installed yet
             return response()->view('pdf.rides', $data);
         }
     }

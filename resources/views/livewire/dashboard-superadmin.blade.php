@@ -40,15 +40,17 @@ new class extends Component {
             User::role('user')->count(),
         ];
 
-        // Last 7 days labels
-        $days = collect(range(6, 0))->map(fn ($i) => Carbon::today()->subDays($i));
+        // Driver chart: current month rides per day
+        $start = Carbon::now()->startOfMonth();
+        $daysInMonth = $start->daysInMonth;
+        $monthDays = collect(range(0, $daysInMonth - 1))->map(fn ($i) => $start->copy()->addDays($i));
         $format = fn ($d) => $d->format('M j');
-        $this->driverLabels = $days->map($format)->toArray();
-        $this->passengerLabels = $this->driverLabels;
+        $this->driverLabels = $monthDays->map($format)->toArray();
+        $this->driverValues = $monthDays->map(fn ($d) => Ride::whereDate('created_at', $d)->count())->toArray();
 
-        // Driver activity: completed rides per day
-        $this->driverValues = $days->map(fn ($d) => Ride::where('status', 'completed')->whereDate('updated_at', $d)->count())->toArray();
-        // Passenger activity: rides created per day
+        // Passenger chart: keep last 7 days (unchanged)
+        $days = collect(range(6, 0))->map(fn ($i) => Carbon::today()->subDays($i));
+        $this->passengerLabels = $days->map($format)->toArray();
         $this->passengerValues = $days->map(fn ($d) => Ride::whereDate('created_at', $d)->count())->toArray();
     }
 }; ?>
@@ -56,27 +58,65 @@ new class extends Component {
 <div class="relative p-4 sm:p-4 space-y-6 overflow-hidden rounded">
     <div class="absolute inset-0 -z-20"></div>
     <div class="absolute inset-0 -z-10 bg-white/50 dark:bg-black/40"></div>
-    <h2 class="tw-heading text-[var(--neutral-text)] dark:text-white">Superadmin Dashboard</h2>
+    <div class="flex items-center justify-between">
+        <h4 class="tw-heading text-[var(--neutral-text)] dark:text-white">Admin Dashboard</h4>
+        <form action="{{ route('admin.rides.export.pdf') }}" method="GET" class="flex items-center gap-2">
+            <label class="text-sm">From
+                <flux:input type="datetime-local" name="from" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
+            </label>
+            <label class="text-sm">To
+                <flux:input type="datetime-local" name="to" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
+            </label>
+            <flux:button type="submit" class="btn-primary">Export Rides</flux:button>
+        </form>
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
             <div class="flex items-center justify-between">
-                <div class="tw-body font-semibold dark:text-zinc-200">Roles Distribution</div>
+                <div class="tw-body font-semibold dark:text-zinc-200">Roles</div>
             </div>
-            <canvas id="rolePie" class="mt-4 w-full" height="180"></canvas>
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                {{-- <div class="rounded-lg border border-gray-200 dark:border-zinc-700 p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-gray-500 dark:text-zinc-400">Superadmin</div>
+                        <span class="inline-flex items-center justify-center h-8 w-8 rounded-md" style="background:#F4C430; color:#111827">👑</span>
+                    </div>
+                    <div class="text-xl font-bold" style="color:#F4C430">{{ $roleValues[0] ?? 0 }}</div>
+                </div> --}}
+                <div class="rounded-lg border border-gray-200 dark:border-zinc-700 p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-gray-500 dark:text-zinc-400">Drivers</div>
+                        <span class="inline-flex items-center justify-center h-8 w-8 rounded-md" style="background:#3B82F6; color:#ffffff">🚗</span>
+                    </div>
+                    <div class="text-xl font-bold" style="color:#3B82F6">{{ $roleValues[1] ?? 0 }}</div>
+                </div>
+                <div class="rounded-lg border border-gray-200 dark:border-zinc-700 p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-gray-500 dark:text-zinc-400">Users</div>
+                        <span class="inline-flex items-center justify-center h-8 w-8 rounded-md" style="background:#8B5CF6; color:#ffffff">👤</span>
+                    </div>
+                    <div class="text-xl font-bold" style="color:#8B5CF6">{{ $roleValues[2] ?? 0 }}</div>
+                </div>
+            </div>
         </div>
         <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
-            <div class="tw-body dark:text-zinc-200">Total Revenue</div>
+            <div class="flex items-center justify-between">
+                <div class="tw-body dark:text-zinc-200">💰 Total Revenue</div>
+            </div>
             <div class="text-2xl font-bold">₦{{ number_format($totalRevenue, 2) }}</div>
         </div>
         <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
-            <div class="tw-body dark:text-zinc-200">Approved Drivers</div>
+            <div class="flex items-center justify-between">
+                <div class="tw-body dark:text-zinc-200">✅ Approved Drivers</div>
+                <flux:link :href="route('admin.drivers')" class="text-xs px-2 py-1 rounded bg-[#007F5F] text-white hover:opacity-90">Manage</flux:link>
+            </div>
             <div class="text-2xl font-bold">{{ $approvedDrivers }}</div>
         </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
             <div class="flex items-center justify-between">
-                <div class="font-semibold">Driver Activity (7 days)</div>
+                <div class="font-semibold">Rides (Current Month)</div>
             </div>
             <canvas id="driverLine" class="mt-4 w-full" height="220"></canvas>
         </div>
@@ -125,25 +165,7 @@ new class extends Component {
         const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary-green').trim() || '#007F5F';
         const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-gold').trim() || '#F4C430';
 
-        // Role Pie
-        const rolePieCtx = document.getElementById('rolePie');
-        if (rolePieCtx) {
-            new Chart(rolePieCtx, {
-                type: 'pie',
-                data: {
-                    labels: @json($roleLabels),
-                    datasets: [{
-                        data: @json($roleValues),
-                        backgroundColor: [primary, accent, '#60A5FA'],
-                        borderColor: isDark ? '#111827' : '#ffffff',
-                        borderWidth: 2,
-                    }]
-                },
-                options: {
-                    plugins: { legend: { labels: { color: fontColor } } }
-                }
-            });
-        }
+
 
         // Driver Line
         const driverLineCtx = document.getElementById('driverLine');
@@ -153,7 +175,7 @@ new class extends Component {
                 data: {
                     labels: @json($driverLabels),
                     datasets: [{
-                        label: 'Completed Rides',
+                        label: 'Rides',
                         data: @json($driverValues),
                         borderColor: primary,
                         backgroundColor: primary,

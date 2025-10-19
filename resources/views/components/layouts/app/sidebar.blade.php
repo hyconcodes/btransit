@@ -53,6 +53,10 @@
                         :current="request()->routeIs('admin.roles')" wire:navigate>
                         {{ __('Roles & Permissions') }}
                     </flux:navlist.item>
+                    <flux:navlist.item icon="credit-card" :href="route('admin.payments')"
+                        :current="request()->routeIs('admin.payments')" wire:navigate>
+                        {{ __('Payments') }}
+                    </flux:navlist.item>
                 @endrole
                 @role('driver')
                     <flux:navlist.item icon="truck" :href="route('driver.rides')"

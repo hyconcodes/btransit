@@ -290,7 +290,7 @@ new class extends Component {
 <div class="p-6 space-y-6">
     <div class="flex items-center justify-between">
         <h2 class="tw-heading">My Rides</h2>
-        <a href="{{ route('driver.rides.export.pdf') }}" target="_blank" class="btn-outline-primary">Export PDF</a>
+        {{-- Export disabled for drivers --}}
     </div>
 
     <div class="flex items-center gap-3">
