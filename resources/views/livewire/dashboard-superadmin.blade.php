@@ -57,21 +57,21 @@ new class extends Component {
 
 <div class="relative p-4 sm:p-4 space-y-6 overflow-hidden rounded">
     <div class="absolute inset-0 -z-20"></div>
-    <div class="absolute inset-0 -z-10 bg-white/50 dark:bg-black/40"></div>
+    <div class="absolute inset-0 -z-10 bg-white/50 dark:bg-zinc-900/40"></div>
     <div class="flex items-center justify-between">
-        <h4 class="tw-heading text-[var(--neutral-text)] dark:text-white">Admin Dashboard</h4>
+        <h4 class="tw-heading text-[var(--neutral-text)] dark:text-zinc-100">Admin Dashboard</h4>
         <form action="{{ route('admin.rides.export.pdf') }}" method="GET" class="flex items-center gap-2">
-            <label class="text-sm">From
-                <flux:input type="datetime-local" name="from" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
+            <label class="text-sm dark:text-zinc-300">From
+                <flux:input type="datetime-local" name="from" class="rounded-lg border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
             </label>
-            <label class="text-sm">To
-                <flux:input type="datetime-local" name="to" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
+            <label class="text-sm dark:text-zinc-300">To
+                <flux:input type="datetime-local" name="to" class="rounded-lg border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]" />
             </label>
             <flux:button type="submit" class="btn-primary">Export Rides</flux:button>
         </form>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
+        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-zinc-100">
             <div class="flex items-center justify-between">
                 <div class="tw-body font-semibold dark:text-zinc-200">Roles</div>
             </div>
@@ -83,14 +83,14 @@ new class extends Component {
                     </div>
                     <div class="text-xl font-bold" style="color:#F4C430">{{ $roleValues[0] ?? 0 }}</div>
                 </div> --}}
-                <div class="rounded-lg border border-gray-200 dark:border-zinc-700 p-3">
+                <div class="rounded-lg border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 p-3">
                     <div class="flex items-center justify-between">
                         <div class="text-xs text-gray-500 dark:text-zinc-400">Drivers</div>
                         <span class="inline-flex items-center justify-center h-8 w-8 rounded-md" style="background:#3B82F6; color:#ffffff">🚗</span>
                     </div>
                     <div class="text-xl font-bold" style="color:#3B82F6">{{ $roleValues[1] ?? 0 }}</div>
                 </div>
-                <div class="rounded-lg border border-gray-200 dark:border-zinc-700 p-3">
+                <div class="rounded-lg border border-gray-200 dark:border-zinc-700 dark:bg-zinc-900 p-3">
                     <div class="flex items-center justify-between">
                         <div class="text-xs text-gray-500 dark:text-zinc-400">Users</div>
                         <span class="inline-flex items-center justify-center h-8 w-8 rounded-md" style="background:#8B5CF6; color:#ffffff">👤</span>
@@ -99,36 +99,36 @@ new class extends Component {
                 </div>
             </div>
         </div>
-        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
+        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-zinc-100">
             <div class="flex items-center justify-between">
                 <div class="tw-body dark:text-zinc-200">💰 Total Revenue</div>
             </div>
-            <div class="text-2xl font-bold">₦{{ number_format($totalRevenue, 2) }}</div>
+            <div class="text-2xl dark:text-zinc-800 font-bold">₦{{ number_format($totalRevenue, 2) }}</div>
         </div>
-        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
+        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-zinc-100">
             <div class="flex items-center justify-between">
                 <div class="tw-body dark:text-zinc-200">✅ Approved Drivers</div>
                 <flux:link :href="route('admin.drivers')" class="text-xs px-2 py-1 rounded bg-[#007F5F] text-white hover:opacity-90">Manage</flux:link>
             </div>
-            <div class="text-2xl font-bold">{{ $approvedDrivers }}</div>
+            <div class="text-2xl dark:text-zinc-800 font-bold">{{ $approvedDrivers }}</div>
         </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
+        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-zinc-100">
             <div class="flex items-center justify-between">
-                <div class="font-semibold">Rides (Current Month)</div>
+                <div class="font-semibold dark:text-zinc-800">Rides (Current Month)</div>
             </div>
             <canvas id="driverLine" class="mt-4 w-full" height="220"></canvas>
         </div>
-        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
+        <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-zinc-100">
             <div class="flex items-center justify-between">
-                <div class="font-semibold">Passenger Activity (7 days)</div>
+                <div class="font-semibold dark:text-zinc-800">Passenger Activity (7 days)</div>
             </div>
             <canvas id="passengerLine" class="mt-4 w-full" height="220"></canvas>
         </div>
     </div>
-    <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-white">
-        <flux:link :href="route('admin.drivers')" variant="primary" class="btn-primary">Manage Drivers</flux:link>
+    <div class="card dark:bg-zinc-900 dark:border dark:border-zinc-700 dark:text-zinc-100">
+        <flux:button :href="route('admin.drivers')" variant="primary" class="btn-primary">Manage Drivers</flux:button>
     </div>
 
     <style>

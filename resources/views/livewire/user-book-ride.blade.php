@@ -43,6 +43,7 @@ new class extends Component {
     {
         $this->drivers = Driver::where('status', 'approved')
             ->where('is_available', true)
+            ->with('user')
             ->orderBy('vehicle_name')
             ->get()
             ->toArray();
@@ -133,7 +134,7 @@ new class extends Component {
     public function refreshUserRides(): void
     {
         $this->myRides = Ride::where('user_id', Auth::id())
-            ->with('rating')
+            ->with(['rating', 'driver.user'])
             ->orderByDesc('created_at')
             ->get()
             ->toArray();
@@ -354,7 +355,7 @@ new class extends Component {
             <select wire:model="driver_id" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]">
                 <option value="">Auto-assign best available</option>
                 @foreach($drivers as $d)
-                    <option value="{{ $d['id'] }}">{{ $d['vehicle_name'] }}</option>
+                    <option value="{{ $d['id'] }}">{{ ($d['user']['name'] ?? 'Driver') }} — {{ $d['vehicle_name'] ?? 'No vehicle' }}</option>
                 @endforeach
             </select>
         </label>
@@ -384,7 +385,7 @@ new class extends Component {
                     <div class="flex items-start justify-between">
                         <div>
                             <div class="font-medium">{{ $r['pickup'] }} → {{ $r['destination'] }}</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-400">Ref: {{ $r['reference'] ?? 'N/A' }} · When: {{ isset($r['scheduled_at']) && $r['scheduled_at'] ? \Illuminate\Support\Carbon::parse($r['scheduled_at'])->format('M j, Y g:ia') : 'Not set' }} · Driver: #{{ $r['driver_id'] }} · Created: {{ \Carbon\Carbon::parse($r['created_at'])->diffForHumans() }}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">Ref: {{ $r['reference'] ?? 'N/A' }} · When: {{ isset($r['scheduled_at']) && $r['scheduled_at'] ? \Illuminate\Support\Carbon::parse($r['scheduled_at'])->format('M j, Y g:ia') : 'Not set' }} · Driver: {{ $r['driver']['user']['name'] ?? 'Auto-assign' }} · Created: {{ \Carbon\Carbon::parse($r['created_at'])->diffForHumans() }}</div>
                         </div>
                         <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium
                             {{ $r['status'] === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' : '' }}
@@ -472,7 +473,7 @@ new class extends Component {
                 <span class="tw-body">Select Driver</span>
                 <select wire:model="new_driver_id" class="rounded-lg border border-gray-200 p-2 focus:ring-2 focus:ring-[#007F5F] focus:border-[#007F5F]">
                     @foreach($drivers as $d)
-                        <option value="{{ $d['id'] }}">{{ $d['vehicle_name'] }}</option>
+                        <option value="{{ $d['id'] }}">{{ ($d['user']['name'] ?? 'Driver') }} — {{ $d['vehicle_name'] ?? 'No vehicle' }}</option>
                     @endforeach
                 </select>
             </label>
@@ -533,7 +534,7 @@ new class extends Component {
                 <div class="tw-body">Reference: {{ $ride?->reference ?? 'N/A' }}</div>
                 <div class="tw-body">Pickup: {{ $ride?->pickup }} → Destination: {{ $ride?->destination }}</div>
                 <div class="tw-body">When: {{ optional($ride?->scheduled_at) ? \Illuminate\Support\Carbon::parse($ride?->scheduled_at)->format('M j, Y g:ia') : 'Not set' }}</div>
-                <div class="tw-body">Driver: {{ optional($ride?->driver)->vehicle_name ?? 'Auto-assign' }}</div>
+                <div class="tw-body">Driver: {{ optional($ride?->driver?->user)->name ?? 'Auto-assign' }} — {{ optional($ride?->driver)->vehicle_name ?? 'N/A' }}</div>
                 <div class="tw-body">Fare: ₦{{ number_format($ride?->fare ?? 0, 2) }}</div>
                 <div class="tw-body">Status: <span class="font-semibold">{{ $ride?->status }}</span></div>
                 @if($ride && $ride->rating)

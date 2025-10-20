@@ -55,7 +55,7 @@
                     </flux:navlist.item>
                     <flux:navlist.item icon="credit-card" :href="route('admin.payments')"
                         :current="request()->routeIs('admin.payments')" wire:navigate>
-                        {{ __('Payments') }}
+                        {{ __('Rides & Payments') }}
                     </flux:navlist.item>
                 @endrole
                 @role('driver')
