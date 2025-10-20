@@ -89,3 +89,88 @@ A campus-focused ride-hailing platform built with Laravel and Livewire. This pro
 
 ## License
 This project is proprietary to its owner. Do not redistribute without permission.
+
+## Detailed Documentation
+
+### Overview
+- Campus ride-hailing platform with roles for passengers, drivers, and superadmins.
+- Emphasis on safe driver onboarding, availability control, and admin oversight.
+
+### Features
+- Driver lifecycle: registration, admin approval, availability toggling.
+- Vehicle management: name, plate, photo stored via `public` disk.
+- Ride management: listing, statuses, and payment history per ride.
+- Admin tools: driver details modal, rides modal, approval and availability controls.
+- UX: modal-based interfaces with Flux components and Livewire Volt state.
+
+### Roles
+- Drivers: manage availability, vehicle info, and handle rides assigned.
+- Superadmins: approve/disable drivers, view details, inspect rides and payments.
+
+### Modules
+- `Drivers` — onboarding, approval, availability, vehicle info.
+- `Rides` — trip records with pickup/destination, fare, status, and payments.
+- `Payments` — per-ride payment entries and status tracking.
+- `Ratings` — model available for feedback features (not yet surfaced in UI).
+
+### Data Model
+- `users` — base identity with name, email, optional phone and avatar.
+- `drivers` — links to `users`, includes `status`, `is_available`, `vehicle_*`, and `vehicle_last_updated_at`.
+- `rides` — references `driver_id`, fields for route, fare, status, payment metadata, optional schedule.
+- `payments` — references `ride_id`, amount, method, status.
+- `ratings` — optional feedback scaffold for future features.
+
+### Components
+- `resources/views/livewire/admin-drivers.blade.php`
+  - Lists drivers with vehicle and status info.
+  - Actions: Approve/Disable, availability toggle with spinner, View Rides, View Details.
+  - Modals:
+    - Rides modal: shows driver rides and payment history.
+    - Driver details modal: shows personal details and vehicle info (photo if available).
+- `resources/views/livewire/dashboard-driver.blade.php` (driver dashboard)
+  - Vehicle modal for register/update.
+  - 30‑day update lock (`vehicle_last_updated_at`) with UI messaging and disabled submit.
+  - Availability toggle and “Manage Rides” access.
+
+### UI/UX
+- Button stack for admin actions: vertical, full‑width, clear states.
+- Availability toggle: icon state + loading spinner during Livewire action.
+- Modals: `flux:modal` components bound via `wire:model` for clean open/close behavior.
+
+### Workflows
+- Driver approval: superadmin toggles status between `approved` and `pending`.
+- Availability toggle: updates `drivers.is_available` and reflects state immediately.
+- Vehicle update lock: updates allowed once every 30 days, tracked via `vehicle_last_updated_at`.
+- Rides inspection: superadmin opens modal to view rides and per‑ride payments.
+
+### Migrations (Key)
+- `2025_10_20_110000_add_vehicle_photo_to_drivers_table`
+- `2025_10_20_120500_add_vehicle_last_updated_at_to_drivers_table`
+- Core tables for users, drivers, rides, payments, ratings, and support columns.
+
+### Security
+- No secrets in repo; configure per‑environment `.env`.
+- Restrict uploaded file types and use `php artisan storage:link` for safe public access.
+- Disable debug in production; use HTTPS and least‑privilege DB accounts.
+
+### Operations
+- Clear and warm caches when deploying (`config:cache`, `route:cache`, `view:cache`).
+- Use `optimize:clear` to re‑set caches across updates.
+- Consider a queue worker for mail or future async tasks.
+
+### Testing
+- Run test suite with `php artisan test`.
+- Add feature tests for driver approval, availability toggle, and vehicle lock logic.
+
+### Recent Changes
+- Converted driver vehicle form to modal with 30‑day lock.
+- Added superadmin driver details modal with vehicle photo.
+- Stacked action buttons and replaced availability text button with icon + spinner.
+- Removed problematic modal `@close` attribute; rely on Livewire binding.
+- Added migrations for vehicle photo and vehicle last updated timestamp.
+
+### Roadmap
+- Passenger booking UI and matching.
+- Enhanced payment integrations and reconciliation.
+- Driver analytics and rating surfaces.
+- Role‑based authorization hardening and audit logging.

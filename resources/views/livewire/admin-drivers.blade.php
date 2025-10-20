@@ -6,6 +6,7 @@ use App\Models\Payment;
 use Illuminate\Support\Carbon;
 use Livewire\Volt\Component;
 use Illuminate\Support\Facades\Storage;
+use App\Services\AuditLogger;
 
 new class extends Component {
     public array $drivers = [];
@@ -37,6 +38,10 @@ new class extends Component {
         }
         $driver->status = $driver->status === 'approved' ? 'pending' : 'approved';
         $driver->save();
+        // Audit log
+        AuditLogger::log(auth()->user(), 'driver.approval.toggled', $driver, [
+            'status' => $driver->status,
+        ]);
         $this->refreshDrivers();
         $this->dispatch('toast', type: 'success', message: $driver->status === 'approved' ? 'Driver approved.' : 'Driver set to pending.');
     }
@@ -51,6 +56,10 @@ new class extends Component {
         }
         $driver->is_available = !(bool) $driver->is_available;
         $driver->save();
+        // Audit log
+        AuditLogger::log(auth()->user(), 'driver.availability.toggled', $driver, [
+            'is_available' => (bool) $driver->is_available,
+        ]);
         $this->refreshDrivers();
         $this->dispatch('toast', type: 'success', message: $driver->is_available ? 'Driver set available.' : 'Driver set unavailable.');
     }
