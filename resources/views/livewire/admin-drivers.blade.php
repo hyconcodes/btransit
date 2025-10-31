@@ -18,6 +18,11 @@ new class extends Component {
     public bool $showDriverInfoModal = false;
     public array $selectedDriver = [];
 
+    // Search and filter properties
+    public string $search = '';
+    public string $statusFilter = '';
+    public string $availabilityFilter = '';
+
     public function mount(): void
     {
         $this->refreshDrivers();
@@ -25,7 +30,54 @@ new class extends Component {
 
     public function refreshDrivers(): void
     {
-        $this->drivers = Driver::with('user')->orderByDesc('created_at')->get()->toArray();
+        $query = Driver::with('user')->orderByDesc('created_at');
+
+        // Apply search filter
+        if (!empty($this->search)) {
+            $query->where(function ($q) {
+                $q->whereHas('user', function ($userQuery) {
+                    $userQuery->where('name', 'like', '%' . $this->search . '%')
+                             ->orWhere('email', 'like', '%' . $this->search . '%');
+                })
+                ->orWhere('vehicle_name', 'like', '%' . $this->search . '%')
+                ->orWhere('plate_number', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        // Apply status filter
+        if (!empty($this->statusFilter)) {
+            $query->where('status', $this->statusFilter);
+        }
+
+        // Apply availability filter
+        if ($this->availabilityFilter !== '') {
+            $query->where('is_available', $this->availabilityFilter === '1');
+        }
+
+        $this->drivers = $query->get()->toArray();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->refreshDrivers();
+    }
+
+    public function updatedStatusFilter(): void
+    {
+        $this->refreshDrivers();
+    }
+
+    public function updatedAvailabilityFilter(): void
+    {
+        $this->refreshDrivers();
+    }
+
+    public function clearFilters(): void
+    {
+        $this->search = '';
+        $this->statusFilter = '';
+        $this->availabilityFilter = '';
+        $this->refreshDrivers();
     }
 
     public function toggleApproval(int $id): void
@@ -113,6 +165,85 @@ new class extends Component {
 
 <div class="p-4 md:p-6 space-y-4 md:space-y-6">
     <h2 class="tw-heading text-lg md:text-xl">Driver Management</h2>
+
+    <!-- Search and Filter Section -->
+    <div class="card p-4 space-y-4">
+        <div class="flex flex-col lg:flex-row gap-4">
+            <!-- Search Input -->
+            <div class="flex-1">
+                <label for="search" class="block text-sm font-medium mb-2">Search Drivers</label>
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="search"
+                        wire:model.live.debounce.300ms="search"
+                        placeholder="Search by name, email, vehicle, or plate number..."
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="w-full lg:w-48">
+                <label for="statusFilter" class="block text-sm font-medium mb-2">Status</label>
+                <select 
+                    id="statusFilter"
+                    wire:model.live="statusFilter"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+
+            <!-- Availability Filter -->
+            <div class="w-full lg:w-48">
+                <label for="availabilityFilter" class="block text-sm font-medium mb-2">Availability</label>
+                <select 
+                    id="availabilityFilter"
+                    wire:model.live="availabilityFilter"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="">All</option>
+                    <option value="1">Available</option>
+                    <option value="0">Unavailable</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Clear Filters Button -->
+        <div class="flex justify-between items-center">
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+                Showing {{ count($drivers) }} driver(s)
+            </div>
+            @if($search || $statusFilter || $availabilityFilter)
+                <flux:button wire:click="clearFilters" variant="outline" size="sm">
+                    <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Clear Filters
+                </flux:button>
+            @endif
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div wire:loading.delay wire:target="search,statusFilter,availabilityFilter" class="flex justify-center py-4">
+        <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>Filtering drivers...</span>
+        </div>
+    </div>
 
     <div class="grid gap-3">
         @forelse ($drivers as $d)
